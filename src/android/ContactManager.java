@@ -32,12 +32,19 @@ import android.provider.ContactsContract.Contacts;
 import android.provider.ContactsContract.RawContacts;
 import android.util.Log;
 
+// account
+import android.accounts.Account;
+import android.accounts.AccountManager;
+import java.lang.Runnable;
+import android.provider.ContactsContract;
+import android.content.ContentResolver;
+
 public class ContactManager extends CordovaPlugin {
 
     private ContactAccessor contactAccessor;
     private CallbackContext callbackContext;        // The callback context from which we were invoked.
     private JSONArray executeArgs;
-    
+
     private static final String LOG_TAG = "Contact Query";
 
     public static final int UNKNOWN_ERROR = 0;
@@ -64,10 +71,10 @@ public class ContactManager extends CordovaPlugin {
      * @return                  True if the action was valid, false otherwise.
      */
     public boolean execute(String action, JSONArray args, final CallbackContext callbackContext) throws JSONException {
-        
+
         this.callbackContext = callbackContext;
-        this.executeArgs = args; 
-        
+        this.executeArgs = args;
+
         /**
          * Check to see if we are on an Android 1.X device.  If we are return an error as we
          * do not support this as of Cordova 1.0.
@@ -97,10 +104,12 @@ public class ContactManager extends CordovaPlugin {
         }
         else if (action.equals("save")) {
             final JSONObject contact = args.getJSONObject(0);
+            final String accountType = args.optString(1, null);
+            final String accountName = args.optString(1, null);
             this.cordova.getThreadPool().execute(new Runnable(){
                 public void run() {
                     JSONObject res = null;
-                    String id = contactAccessor.save(contact);
+                    String id = contactAccessor.save(contact, accountType, accountName);
                     if (id != null) {
                         try {
                             res = contactAccessor.getContactById(id);
@@ -131,12 +140,35 @@ public class ContactManager extends CordovaPlugin {
         else if (action.equals("pickContact")) {
             pickContactAsync();
         }
+        else if (action.equals("createAccount")) {
+            createAccount();
+
+            // listAccounts();
+        }
+
         else {
             return false;
         }
         return true;
     }
-    
+
+
+    private void createAccount() {
+        AccountManager accountManager = AccountManager.get(ContactManager.this.cordova.getActivity());
+        Account account = new Account("myCozy", "io.cozy");
+
+        // ContentResolver.setIsSyncable(account, ContactsContract.AUTHORITY, 1);
+        // ContentResolver.setSyncAutomatically(account, ContactsContract.AUTHORITY, true);
+        accountManager.addAccountExplicitly(account, null, null);
+    }
+
+    private void listAccounts() {
+        AccountManager accountManager = AccountManager.get(ContactManager.this.cordova.getActivity());
+        for (Account c: accountManager.getAccounts()) {
+            Log.d("CordovaContacts", c.type + ", " + c.name);
+        }
+    }
+
     /**
      * Launches the Contact Picker to select a single contact.
      */
@@ -150,7 +182,7 @@ public class ContactManager extends CordovaPlugin {
         };
         this.cordova.getThreadPool().execute(worker);
     }
-    
+
     /**
      * Called when user picks contact.
      * @param requestCode       The request code originally supplied to startActivityForResult(),

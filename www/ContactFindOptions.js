@@ -26,10 +26,13 @@
  * @param multiple boolean used to determine if more than one contact should be returned
  */
 
-var ContactFindOptions = function(filter, multiple, desiredFields) {
+var ContactFindOptions = function(filter, multiple, desiredFields,
+        accountType, accountName) {
     this.filter = filter || '';
     this.multiple = (typeof multiple != 'undefined' ? multiple : false);
     this.desiredFields = typeof desiredFields != 'undefined' ? desiredFields : [];
+    this.accountType = accountType || null;
+    this.accountName = accountName || null;
 };
 
 module.exports = ContactFindOptions;

@@ -149,10 +149,12 @@ Contact.prototype.clone = function() {
 
 /**
 * Persists contact to device storage.
+* @param options (optional), accountType and accountName to save in.
 * @param successCB success callback
 * @param errorCB error callback
 */
-Contact.prototype.save = function(successCB, errorCB) {
+Contact.prototype.save = function(successCB, errorCB, options) {
+
     argscheck.checkArgs('FFO', 'Contact.save', arguments);
     var fail = errorCB && function(code) {
         errorCB(new ContactError(code));
@@ -170,7 +172,10 @@ Contact.prototype.save = function(successCB, errorCB) {
         }
     };
     var dupContact = convertOut(utils.clone(this));
-    exec(success, fail, "Contacts", "save", [dupContact]);
+    options = options || {};
+    var accountType = options.accountType;
+    var accountName = options.accountName;
+    exec(success, fail, "Contacts", "save", [dupContact, accountType, accountName]);
 };
 
 

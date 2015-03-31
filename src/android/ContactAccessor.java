@@ -147,6 +147,7 @@ public abstract class ContactAccessor {
      */
     public abstract String save(JSONObject contact);
 
+    public abstract String save(JSONObject contact, String accountType, String accountName);
     /**
      * Handles searching through SDK-specific contacts API.
      */
@@ -157,10 +158,10 @@ public abstract class ContactAccessor {
      * @throws JSONException
      */
     public abstract JSONObject getContactById(String id) throws JSONException;
-    
+
     /**
      * Handles searching through SDK-specific contacts API.
-     * @param desiredFields fields that will filled. All fields will be filled if null 
+     * @param desiredFields fields that will filled. All fields will be filled if null
      * @throws JSONException
      */
     public abstract JSONObject getContactById(String id, JSONArray desiredFields) throws JSONException;
@@ -169,9 +170,9 @@ public abstract class ContactAccessor {
      * Handles removing a contact from the database.
      */
     public abstract boolean remove(String id);
-    
+
    /**
-     * A class that represents the where clause to be used in the database query 
+     * A class that represents the where clause to be used in the database query
      */
     class WhereOptions {
         private String where;

@@ -79,12 +79,42 @@
             <uses-permission android:name="android.permission.READ_CONTACTS" />
             <uses-permission android:name="android.permission.WRITE_CONTACTS" />
             <uses-permission android:name="android.permission.GET_ACCOUNTS" />
+            <uses-permission android:name="android.permission.AUTHENTICATE_ACCOUNTS" />
+            <!--uses-permission android:name="android.permission.WRITE_SYNC_SETTINGS" /-->
+        </config-file>
+        <config-file target="AndroidManifest.xml" parent="/manifest/application">
+             <service android:name="org.apache.cordova.contacts.authenticator.AuthenticationService" android:exported="false" >
+                <intent-filter>
+                    <action android:name="android.accounts.AccountAuthenticator" />
+                </intent-filter>
+                <meta-data android:name="android.accounts.AccountAuthenticator"
+                    android:resource="@xml/authenticator" />
+            </service>
+            <service android:name="org.apache.cordova.contacts.syncadapter.SyncService" android:exported="false" >
+                <intent-filter>
+                    <action android:name="android.content.SyncAdapter" />
+                </intent-filter>
+                <meta-data android:name="android.content.SyncAdapter"
+                    android:resource="@xml/syncadapter" />
+                <meta-data android:name="android.provider.CONTACTS_STRUCTURE"
+                        android:resource="@xml/contacts" />
+            </service>
+
         </config-file>
 
         <source-file src="src/android/ContactAccessor.java" target-dir="src/org/apache/cordova/contacts" />
         <source-file src="src/android/ContactAccessorSdk5.java" target-dir="src/org/apache/cordova/contacts" />
         <source-file src="src/android/ContactManager.java" target-dir="src/org/apache/cordova/contacts" />
         <source-file src="src/android/ContactInfoDTO.java" target-dir="src/org/apache/cordova/contacts" />
+        <source-file src="src/android/authenticator/AuthenticationService.java" target-dir="src/org/apache/cordova/contacts/authenticator" />
+        <source-file src="src/android/authenticator/Authenticator.java" target-dir="src/org/apache/cordova/contacts/authenticator" />
+        <source-file src="src/android/syncadapter/SyncAdapter.java" target-dir="src/org/apache/cordova/contacts/syncadapter" />
+        <source-file src="src/android/syncadapter/SyncService.java" target-dir="src/org/apache/cordova/contacts/syncadapter" />
+
+        <source-file src="src/android/res/authenticator.xml" target-dir="res/xml" />
+        <source-file src="src/android/res/syncadapter.xml" target-dir="res/xml" />
+        <source-file src="src/android/res/contacts.xml" target-dir="res/xml" />
+
     </platform>
 
     <!-- amazon-fireos -->
