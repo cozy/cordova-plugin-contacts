@@ -25,7 +25,7 @@ var argscheck = require('cordova/argscheck'),
     utils = require('cordova/utils'),
     Contact = require('./Contact'),
     fieldType = require('./ContactFieldType');
-    
+
 
 /**
 * Represents a group of Contacts.
@@ -58,7 +58,7 @@ var contacts = {
             exec(win, errorCB, "Contacts", "search", [fields, options]);
         }
     },
-    
+
     /**
      * This function picks contact from phone using contact picker UI
      * @returns new Contact object
@@ -83,7 +83,7 @@ var contacts = {
      * @param properties an object whose properties will be examined to create a new Contact
      * @returns new Contact object
      */
-    create:function(properties) {
+    create: function(properties) {
         argscheck.checkArgs('O', 'contacts.create', arguments);
         var contact = new Contact();
         for (var i in properties) {
@@ -92,7 +92,14 @@ var contacts = {
             }
         }
         return contact;
-    }
+    },
+
+    // TODO
+    createAccount: function(accountType, accountName, successCB, errorCB) {
+        argscheck.checkArgs('ssfF', 'contacts.createAccount', arguments);
+        exec(successCB, errorCB, 'Contacts', 'createAccount', [accountName, accountType]);
+
+    },
 };
 
 module.exports = contacts;

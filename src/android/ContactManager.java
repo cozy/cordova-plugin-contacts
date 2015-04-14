@@ -105,7 +105,7 @@ public class ContactManager extends CordovaPlugin {
         else if (action.equals("save")) {
             final JSONObject contact = args.getJSONObject(0);
             final String accountType = args.optString(1, null);
-            final String accountName = args.optString(1, null);
+            final String accountName = args.optString(2, null);
             this.cordova.getThreadPool().execute(new Runnable(){
                 public void run() {
                     JSONObject res = null;
@@ -140,9 +140,10 @@ public class ContactManager extends CordovaPlugin {
         else if (action.equals("pickContact")) {
             pickContactAsync();
         }
+        // TODO : cleanup !
         else if (action.equals("createAccount")) {
             createAccount();
-
+            callbackContext.success();
             // listAccounts();
         }
 
@@ -152,9 +153,17 @@ public class ContactManager extends CordovaPlugin {
         return true;
     }
 
-
+    // TODO !!
     private void createAccount() {
         AccountManager accountManager = AccountManager.get(ContactManager.this.cordova.getActivity());
+        // Create account if not exist.
+        for (Account c: accountManager.getAccounts()) {
+            Log.d("CordovaContacts", c.type + ", " + c.name);
+            if ("io.cozy".equals(c.type) && "myCozy".equals(c.name)) {
+                return; // skip creation.
+            }
+        }
+
         Account account = new Account("myCozy", "io.cozy");
 
         // ContentResolver.setIsSyncable(account, ContactsContract.AUTHORITY, 1);
