@@ -50,9 +50,9 @@ import android.os.RemoteException;
 import android.provider.ContactsContract;
 import android.util.Log;
 
-// TODO : unused
-import android.provider.ContactsContract.RawContactsEntity;
+import android.util.Base64;
 import android.provider.ContactsContract.RawContacts;
+import android.provider.ContactsContract.RawContactsEntity;
 
 
 
@@ -213,6 +213,7 @@ public class ContactAccessorSdk5 extends ContactAccessor {
         columnsToFetch.add(ContactsContract.Data.CONTACT_ID);
         columnsToFetch.add(ContactsContract.Data.RAW_CONTACT_ID);
         columnsToFetch.add(ContactsContract.Data.MIMETYPE);
+        columnsToFetch.add(ContactsContract.RawContacts.VERSION);
 
         if (isRequired("displayName", populate)) {
             columnsToFetch.add(ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME);
@@ -337,6 +338,7 @@ public class ContactAccessorSdk5 extends ContactAccessor {
         String oldContactId = "";
         boolean newContact = true;
         String mimetype = "";
+        int version = 0;
 
         JSONArray contacts = new JSONArray();
         JSONObject contact = new JSONObject();
@@ -357,12 +359,14 @@ public class ContactAccessorSdk5 extends ContactAccessor {
         int colNickname = c.getColumnIndex(ContactsContract.CommonDataKinds.Nickname.NAME);
         int colBirthday = c.getColumnIndex(ContactsContract.CommonDataKinds.Event.START_DATE);
         int colEventType = c.getColumnIndex(ContactsContract.CommonDataKinds.Event.TYPE);
+        int colVersion = c.getColumnIndex(ContactsContract.RawContacts.VERSION);
 
         if (c.getCount() > 0) {
             while (c.moveToNext() && (contacts.length() <= (limit - 1))) {
                 try {
                     contactId = c.getString(colContactId);
                     rawId = c.getString(colRawContactId);
+                    version = c.getInt(colVersion);
 
                     // If we are in the first row set the oldContactId
                     if (c.getPosition() == 0) {
@@ -376,6 +380,8 @@ public class ContactAccessorSdk5 extends ContactAccessor {
                         // and push the contact into the contacts array
                         contacts.put(populateContact(contact, organizations, addresses, phones,
                                 emails, ims, websites, photos));
+
+
 
                         // Clean up the objects
                         contact = new JSONObject();
@@ -397,6 +403,9 @@ public class ContactAccessorSdk5 extends ContactAccessor {
                         newContact = false;
                         contact.put("id", contactId);
                         contact.put("rawId", rawId);
+                        contact.put("version", version);
+
+
                     }
 
                     // Grab the mimetype of the current row as it will be used in a lot of comparisons
@@ -1433,7 +1442,7 @@ public class ContactAccessorSdk5 extends ContactAccessor {
                     for (int i = 0; i < photos.length(); i++) {
                         JSONObject photo = (JSONObject) photos.get(i);
                         String photoId = getJsonString(photo, "id");
-                        byte[] bytes = getPhotoBytes(getJsonString(photo, "value"));
+                        byte[] bytes = getPhotoBytes(photo);
                         // This is a new photo so do a DB insert
                         if (photoId == null) {
                             ContentValues contentValues = new ContentValues();
@@ -1595,13 +1604,34 @@ public class ContactAccessorSdk5 extends ContactAccessor {
      */
     private void insertPhoto(ArrayList<ContentProviderOperation> ops,
             JSONObject photo) {
-        byte[] bytes = getPhotoBytes(getJsonString(photo, "value"));
+        byte[] bytes = getPhotoBytes(photo);
         ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
                 .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
                 .withValue(ContactsContract.Data.IS_SUPER_PRIMARY, 1)
                 .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Photo.CONTENT_ITEM_TYPE)
                 .withValue(ContactsContract.CommonDataKinds.Photo.PHOTO, bytes)
                 .build());
+    }
+
+    /**
+     * Gets the raw bytes from the supplied photo json object.
+     *
+     * @param filename the file to read the bytes from
+     * @return a byte array
+     * @throws IOException
+     */
+    private byte[] getPhotoBytes(JSONObject photo) {
+        String type = getJsonString(photo, "type");
+        String value = getJsonString(photo, "value");
+        if ("url".equals(type)) {
+            return getPhotoBytes(value);
+
+        } else if ("base64".equals(type)) {
+            return Base64.decode(value, Base64.DEFAULT);
+
+        } else {
+            return null;
+        }
     }
 
     /**

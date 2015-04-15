@@ -84,6 +84,7 @@ var Contact = function (id, displayName, name, nickname, phoneNumbers, emails, a
     ims, organizations, birthday, note, photos, categories, urls) {
     this.id = id || null;
     this.rawId = null;
+    this.version = null;
     this.displayName = displayName || null;
     this.name = name || null; // ContactName
     this.nickname = nickname || null;
