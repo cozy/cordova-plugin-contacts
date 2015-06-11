@@ -176,7 +176,8 @@ public class ContactAccessorSdk5 extends ContactAccessor {
             allContacts = true;
         }
 
-        //Log.d(LOG_TAG, "Search Term = " + searchTerm);
+
+        // Log.d(LOG_TAG, "Search Term = " + searchTerm);
         //Log.d(LOG_TAG, "Field Length = " + fields.length());
         //Log.d(LOG_TAG, "Fields = " + fields.toString());
 
@@ -204,6 +205,8 @@ public class ContactAccessorSdk5 extends ContactAccessor {
             contactIds.add(idCursor.getString(idColumn));
         }
         idCursor.close();
+
+        Log.d(LOG_TAG, "contactIds.length: " + contactIds.size());
 
         // Build a query that only looks at ids
         WhereOptions idOptions = buildIdClause(contactIds, allContacts);
@@ -1018,6 +1021,7 @@ public class ContactAccessorSdk5 extends ContactAccessor {
             }
         }
 
+        Log.d(LOG_TAG, "accountType: " + accountType + ", accountName: " + accountName);
         String id = getJsonString(contact, "id");
         if (id == null) {
             // Create new contact
@@ -1043,11 +1047,15 @@ public class ContactAccessorSdk5 extends ContactAccessor {
         // Create a list of attributes to add to the contact database
         ArrayList<ContentProviderOperation> ops = new ArrayList<ContentProviderOperation>();
 
+        // TODO: really dangerous : move all contact to accountYpe, accountName.
+        // May come from examples in android doc, useless (unless change account
+        // of a app).
+        //
         //Add contact type
-        ops.add(ContentProviderOperation.newUpdate(ContactsContract.RawContacts.CONTENT_URI)
-                .withValue(ContactsContract.RawContacts.ACCOUNT_TYPE, accountType)
-                .withValue(ContactsContract.RawContacts.ACCOUNT_NAME, accountName)
-                .build());
+        // ops.add(ContentProviderOperation.newUpdate(ContactsContract.RawContacts.CONTENT_URI)
+        //         .withValue(ContactsContract.RawContacts.ACCOUNT_TYPE, accountType)
+        //         .withValue(ContactsContract.RawContacts.ACCOUNT_NAME, accountName)
+        //         .build());
 
         // Modify name
         JSONObject name;
@@ -1486,9 +1494,9 @@ public class ContactAccessorSdk5 extends ContactAccessor {
             retVal = false;
         }
 
-        // if the save was a success return the contact ID
+        // if the save was a success return the contact RAW_ID
         if (retVal) {
-            return id;
+            return String.valueOf(rawId);
         } else {
             return null;
         }

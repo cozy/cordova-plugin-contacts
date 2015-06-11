@@ -110,6 +110,7 @@ public class ContactManager extends CordovaPlugin {
                 public void run() {
                     JSONObject res = null;
                     String id = contactAccessor.save(contact, accountType, accountName);
+                    Log.d(LOG_TAG, "Saved id: " + id);
                     if (id != null) {
                         try {
                             res = contactAccessor.getContactById(id);
@@ -117,6 +118,7 @@ public class ContactManager extends CordovaPlugin {
                             Log.e(LOG_TAG, "JSON fail.", e);
                         }
                     }
+                    Log.d(LOG_TAG, "getContact success: " + String.valueOf(res != null));
                     if (res != null) {
                         callbackContext.success(res);
                     } else {
