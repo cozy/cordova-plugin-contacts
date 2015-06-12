@@ -123,6 +123,9 @@ public class ContactAccessorSdk5 extends ContactAccessor {
         //dbMap.put("categories.value", null);
         dbMap.put("urls", ContactsContract.CommonDataKinds.Website.URL);
         dbMap.put("urls.value", ContactsContract.CommonDataKinds.Website.URL);
+
+        dbMap.put("dirty", ContactsContract.RawContacts.DIRTY);
+
     }
 
     /**
@@ -214,9 +217,20 @@ public class ContactAccessorSdk5 extends ContactAccessor {
         // Determine which columns we should be fetching.
         HashSet<String> columnsToFetch = new HashSet<String>();
         columnsToFetch.add(ContactsContract.Data.CONTACT_ID);
-        columnsToFetch.add(ContactsContract.Data.RAW_CONTACT_ID);
+        // columnsToFetch.add(ContactsContract.Data.RAW_CONTACT_ID);
+        columnsToFetch.add(ContactsContract.RawContacts._ID);
+
         columnsToFetch.add(ContactsContract.Data.MIMETYPE);
         columnsToFetch.add(ContactsContract.RawContacts.VERSION);
+
+        columnsToFetch.add(ContactsContract.RawContacts.DIRTY);
+        columnsToFetch.add(ContactsContract.RawContacts.SOURCE_ID);
+        columnsToFetch.add(ContactsContract.RawContacts.SYNC1);
+        columnsToFetch.add(ContactsContract.RawContacts.SYNC2);
+        columnsToFetch.add(ContactsContract.RawContacts.SYNC3);
+        columnsToFetch.add(ContactsContract.RawContacts.SYNC4);
+
+
 
         if (isRequired("displayName", populate)) {
             columnsToFetch.add(ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME);
@@ -280,10 +294,14 @@ public class ContactAccessorSdk5 extends ContactAccessor {
         }
 
         // Do the id query
-        Cursor c = mApp.getActivity().getContentResolver().query(ContactsContract.Data.CONTENT_URI,
+        Cursor c = mApp.getActivity().getContentResolver().query(
+            // ContactsContract.Data.CONTENT_URI,
+            RawContactsEntity.CONTENT_URI,
+
                 columnsToFetch.toArray(new String[] {}),
                 idOptions.getWhere(),
                 idOptions.getWhereArgs(),
+                // ContactsContract.Data.CONTACT_ID + " ASC");
                 ContactsContract.Data.CONTACT_ID + " ASC");
 
         JSONArray contacts = populateContactArray(limit, populate, c);
@@ -306,11 +324,14 @@ public class ContactAccessorSdk5 extends ContactAccessor {
     public JSONObject getContactById(String id, JSONArray desiredFields) throws JSONException {
         // Do the id query
         Cursor c = mApp.getActivity().getContentResolver().query(
-                ContactsContract.Data.CONTENT_URI,
+                // ContactsContract.Data.CONTENT_URI,
+                RawContactsEntity.CONTENT_URI,
                 null,
-                ContactsContract.Data.RAW_CONTACT_ID + " = ? ",
+                // ContactsContract.Data.RAW_CONTACT_ID + " = ? ",
+                ContactsContract.RawContacts._ID + " = ? ",
                 new String[] { id },
-                ContactsContract.Data.RAW_CONTACT_ID + " ASC");
+                // ContactsContract.Data.RAW_CONTACT_ID + " ASC");
+                ContactsContract.RawContacts.Data._ID + " ASC");
 
         HashMap<String, Boolean> populate = buildPopulationSet(
                 new JSONObject().put("desiredFields", desiredFields)
@@ -342,6 +363,12 @@ public class ContactAccessorSdk5 extends ContactAccessor {
         boolean newContact = true;
         String mimetype = "";
         int version = 0;
+        boolean dirty = false;
+        String sourceId = "";
+        String sync1 = "";
+        String sync2 = "";
+        String sync3 = "";
+        String sync4 = "";
 
         JSONArray contacts = new JSONArray();
         JSONObject contact = new JSONObject();
@@ -355,7 +382,8 @@ public class ContactAccessorSdk5 extends ContactAccessor {
 
         // Column indices
         int colContactId = c.getColumnIndex(ContactsContract.Data.CONTACT_ID);
-        int colRawContactId = c.getColumnIndex(ContactsContract.Data.RAW_CONTACT_ID);
+        // int colRawContactId = c.getColumnIndex(ContactsContract.Data.RAW_CONTACT_ID);
+        int colRawContactId = c.getColumnIndex(ContactsContract.RawContacts._ID);
         int colMimetype = c.getColumnIndex(ContactsContract.Data.MIMETYPE);
         int colDisplayName = c.getColumnIndex(ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME);
         int colNote = c.getColumnIndex(ContactsContract.CommonDataKinds.Note.NOTE);
@@ -363,6 +391,13 @@ public class ContactAccessorSdk5 extends ContactAccessor {
         int colBirthday = c.getColumnIndex(ContactsContract.CommonDataKinds.Event.START_DATE);
         int colEventType = c.getColumnIndex(ContactsContract.CommonDataKinds.Event.TYPE);
         int colVersion = c.getColumnIndex(ContactsContract.RawContacts.VERSION);
+        int colDirty = c.getColumnIndex(ContactsContract.RawContacts.DIRTY);
+        int colSourceId = c.getColumnIndex(ContactsContract.RawContacts.SOURCE_ID);
+        int colSync1 = c.getColumnIndex(ContactsContract.RawContacts.SYNC1);
+        int colSync2 = c.getColumnIndex(ContactsContract.RawContacts.SYNC2);
+        int colSync3 = c.getColumnIndex(ContactsContract.RawContacts.SYNC3);
+        int colSync4 = c.getColumnIndex(ContactsContract.RawContacts.SYNC4);
+
 
         if (c.getCount() > 0) {
             while (c.moveToNext() && (contacts.length() <= (limit - 1))) {
@@ -370,6 +405,12 @@ public class ContactAccessorSdk5 extends ContactAccessor {
                     contactId = c.getString(colContactId);
                     rawId = c.getString(colRawContactId);
                     version = c.getInt(colVersion);
+                    dirty = c.getInt(colDirty) == 1;
+                    sourceId = c.getString(colSourceId);
+                    sync1 = c.getString(colSync1);
+                    sync2 = c.getString(colSync2);
+                    sync3 = c.getString(colSync3);
+                    sync4 = c.getString(colSync4);
 
                     // If we are in the first row set the oldContactId
                     if (c.getPosition() == 0) {
@@ -407,8 +448,12 @@ public class ContactAccessorSdk5 extends ContactAccessor {
                         contact.put("id", contactId);
                         contact.put("rawId", rawId);
                         contact.put("version", version);
-
-
+                        contact.put("dirty", dirty);
+                        contact.put("sourceId", sourceId);
+                        contact.put("sync1", sync1);
+                        contact.put("sync2", sync2);
+                        contact.put("sync3", sync3);
+                        contact.put("sync4", sync4);
                     }
 
                     // Grab the mimetype of the current row as it will be used in a lot of comparisons
@@ -701,6 +746,31 @@ public class ContactAccessorSdk5 extends ContactAccessor {
                         whereArgs.add(searchTerm);
                         whereArgs.add(ContactsContract.CommonDataKinds.Website.CONTENT_ITEM_TYPE);
                     }
+
+                    else if (key.startsWith("sourceId")) {
+                        where.add("(" + ContactsContract.RawContacts.SOURCE_ID + " LIKE ? )");
+                        whereArgs.add(searchTerm);
+                    }
+                    else if (key.startsWith("dirty")) {
+                        where.add("(" + dbMap.get(key) + " LIKE ? )");
+                        whereArgs.add(searchTerm);
+                    }
+                    else if (key.startsWith("sync1")) {
+                        where.add("(" + ContactsContract.RawContacts.SYNC1 + " LIKE ? )");
+                        whereArgs.add(searchTerm);
+                    }
+                    else if (key.startsWith("sync2")) {
+                        where.add("(" + ContactsContract.RawContacts.SYNC2 + " LIKE ? )");
+                        whereArgs.add(searchTerm);
+                    }
+                    else if (key.startsWith("sync3")) {
+                        where.add("(" + ContactsContract.RawContacts.SYNC3 + " LIKE ? )");
+                        whereArgs.add(searchTerm);
+                    }
+                    else if (key.startsWith("sync4")) {
+                        where.add("(" + ContactsContract.RawContacts.SYNC4 + " LIKE ? )");
+                        whereArgs.add(searchTerm);
+                    }
                 }
             } catch (JSONException e) {
                 Log.e(LOG_TAG, e.getMessage(), e);
@@ -969,7 +1039,7 @@ public class ContactAccessorSdk5 extends ContactAccessor {
      * @returns the id if the contact is successfully saved, null otherwise.
      */
     public String save(JSONObject contact) {
-        return save(contact, null, null);
+        return save(contact, null, null, false);
     }
 
     @Override
@@ -979,9 +1049,10 @@ public class ContactAccessorSdk5 extends ContactAccessor {
      * @param contact the contact to be saved.
      * @param accountType the accountType to save the contact in.
      * @param accountName the accountName to save the contact in.
+     * @param callerIsSyncAdapter should set the flag during requests ?
      * @return the id if the contact is successfully saved, null otherwise.
      */
-    public String save(JSONObject contact, String accountType, String accountName) {
+    public String save(JSONObject contact, String accountType, String accountName, boolean callerIsSyncAdapter) {
         if (accountType == null || accountName == null) {
             AccountManager mgr = AccountManager.get(mApp.getActivity());
             Account[] accounts = mgr.getAccounts();
@@ -1025,10 +1096,10 @@ public class ContactAccessorSdk5 extends ContactAccessor {
         String id = getJsonString(contact, "id");
         if (id == null) {
             // Create new contact
-            return createNewContact(contact, accountType, accountName);
+            return createNewContact(contact, accountType, accountName, callerIsSyncAdapter);
         } else {
             // Modify existing contact
-            return modifyContact(id, contact, accountType, accountName);
+            return modifyContact(id, contact, accountType, accountName, callerIsSyncAdapter);
         }
     }
 
@@ -1039,13 +1110,21 @@ public class ContactAccessorSdk5 extends ContactAccessor {
      * @param contact the contact to be saved
      * @param account the account to be saved under
      */
-    private String modifyContact(String id, JSONObject contact, String accountType, String accountName) {
+    private String modifyContact(String id, JSONObject contact, String accountType, String accountName, boolean callerIsSyncAdapter) {
         // Get the RAW_CONTACT_ID which is needed to insert new values in an already existing contact.
         // But not needed to update existing values.
         int rawId = (Integer.valueOf(getJsonString(contact, "rawId"))).intValue();
 
+        Uri contentUri = ContactsContract.Data.CONTENT_URI;
+        if (callerIsSyncAdapter) {
+            contentUri = contentUri.buildUpon()
+                .appendQueryParameter(ContactsContract.CALLER_IS_SYNCADAPTER, "true")
+                .build();
+        }
+
         // Create a list of attributes to add to the contact database
         ArrayList<ContentProviderOperation> ops = new ArrayList<ContentProviderOperation>();
+
 
         // TODO: really dangerous : move all contact to accountYpe, accountName.
         // May come from examples in android doc, useless (unless change account
@@ -1063,7 +1142,7 @@ public class ContactAccessorSdk5 extends ContactAccessor {
             String displayName = getJsonString(contact, "displayName");
             name = contact.getJSONObject("name");
             if (displayName != null || name != null) {
-                ContentProviderOperation.Builder builder = ContentProviderOperation.newUpdate(ContactsContract.Data.CONTENT_URI)
+                ContentProviderOperation.Builder builder = ContentProviderOperation.newUpdate(contentUri)
                         .withSelection(ContactsContract.Data.CONTACT_ID + "=? AND " +
                                 ContactsContract.Data.MIMETYPE + "=?",
                                 new String[] { id, ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE });
@@ -1106,7 +1185,7 @@ public class ContactAccessorSdk5 extends ContactAccessor {
             if (phones != null) {
                 // Delete all the phones
                 if (phones.length() == 0) {
-                    ops.add(ContentProviderOperation.newDelete(ContactsContract.Data.CONTENT_URI)
+                    ops.add(ContentProviderOperation.newDelete(contentUri)
                             .withSelection(ContactsContract.Data.RAW_CONTACT_ID + "=? AND " +
                                     ContactsContract.Data.MIMETYPE + "=?",
                                     new String[] { "" + rawId, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE })
@@ -1126,11 +1205,11 @@ public class ContactAccessorSdk5 extends ContactAccessor {
                             contentValues.put(ContactsContract.CommonDataKinds.Phone.TYPE, getPhoneType(getJsonString(phone, "type")));
 
                             ops.add(ContentProviderOperation.newInsert(
-                                    ContactsContract.Data.CONTENT_URI).withValues(contentValues).build());
+                                    contentUri).withValues(contentValues).build());
                         }
                         // This is an existing phone so do a DB update
                         else {
-                            ops.add(ContentProviderOperation.newUpdate(ContactsContract.Data.CONTENT_URI)
+                            ops.add(ContentProviderOperation.newUpdate(contentUri)
                                     .withSelection(ContactsContract.CommonDataKinds.Phone._ID + "=? AND " +
                                             ContactsContract.Data.MIMETYPE + "=?",
                                             new String[] { phoneId, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE })
@@ -1152,7 +1231,7 @@ public class ContactAccessorSdk5 extends ContactAccessor {
             if (emails != null) {
                 // Delete all the emails
                 if (emails.length() == 0) {
-                    ops.add(ContentProviderOperation.newDelete(ContactsContract.Data.CONTENT_URI)
+                    ops.add(ContentProviderOperation.newDelete(contentUri)
                             .withSelection(ContactsContract.Data.RAW_CONTACT_ID + "=? AND " +
                                     ContactsContract.Data.MIMETYPE + "=?",
                                     new String[] { "" + rawId, ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE })
@@ -1172,13 +1251,13 @@ public class ContactAccessorSdk5 extends ContactAccessor {
                             contentValues.put(ContactsContract.CommonDataKinds.Email.TYPE, getContactType(getJsonString(email, "type")));
 
                             ops.add(ContentProviderOperation.newInsert(
-                                    ContactsContract.Data.CONTENT_URI).withValues(contentValues).build());
+                                    contentUri).withValues(contentValues).build());
                         }
                         // This is an existing email so do a DB update
                         else {
                          String emailValue=getJsonString(email, "value");
                          if(!emailValue.isEmpty()) {
-                                ops.add(ContentProviderOperation.newUpdate(ContactsContract.Data.CONTENT_URI)
+                                ops.add(ContentProviderOperation.newUpdate(contentUri)
                                     .withSelection(ContactsContract.CommonDataKinds.Email._ID + "=? AND " +
                                             ContactsContract.Data.MIMETYPE + "=?",
                                             new String[] { emailId, ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE })
@@ -1186,7 +1265,7 @@ public class ContactAccessorSdk5 extends ContactAccessor {
                                     .withValue(ContactsContract.CommonDataKinds.Email.TYPE, getContactType(getJsonString(email, "type")))
                                     .build());
                          } else {
-                                ops.add(ContentProviderOperation.newDelete(ContactsContract.Data.CONTENT_URI)
+                                ops.add(ContentProviderOperation.newDelete(contentUri)
                                         .withSelection(ContactsContract.CommonDataKinds.Email._ID + "=? AND " +
                                                 ContactsContract.Data.MIMETYPE + "=?",
                                                 new String[] { emailId, ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE })
@@ -1207,7 +1286,7 @@ public class ContactAccessorSdk5 extends ContactAccessor {
             if (addresses != null) {
                 // Delete all the addresses
                 if (addresses.length() == 0) {
-                    ops.add(ContentProviderOperation.newDelete(ContactsContract.Data.CONTENT_URI)
+                    ops.add(ContentProviderOperation.newDelete(contentUri)
                             .withSelection(ContactsContract.Data.RAW_CONTACT_ID + "=? AND " +
                                     ContactsContract.Data.MIMETYPE + "=?",
                                     new String[] { "" + rawId, ContactsContract.CommonDataKinds.StructuredPostal.CONTENT_ITEM_TYPE })
@@ -1232,11 +1311,11 @@ public class ContactAccessorSdk5 extends ContactAccessor {
                             contentValues.put(ContactsContract.CommonDataKinds.StructuredPostal.COUNTRY, getJsonString(address, "country"));
 
                             ops.add(ContentProviderOperation.newInsert(
-                                    ContactsContract.Data.CONTENT_URI).withValues(contentValues).build());
+                                    contentUri).withValues(contentValues).build());
                         }
                         // This is an existing address so do a DB update
                         else {
-                            ops.add(ContentProviderOperation.newUpdate(ContactsContract.Data.CONTENT_URI)
+                            ops.add(ContentProviderOperation.newUpdate(contentUri)
                                     .withSelection(ContactsContract.CommonDataKinds.StructuredPostal._ID + "=? AND " +
                                             ContactsContract.Data.MIMETYPE + "=?",
                                             new String[] { addressId, ContactsContract.CommonDataKinds.StructuredPostal.CONTENT_ITEM_TYPE })
@@ -1263,7 +1342,7 @@ public class ContactAccessorSdk5 extends ContactAccessor {
             if (organizations != null) {
                 // Delete all the organizations
                 if (organizations.length() == 0) {
-                    ops.add(ContentProviderOperation.newDelete(ContactsContract.Data.CONTENT_URI)
+                    ops.add(ContentProviderOperation.newDelete(contentUri)
                             .withSelection(ContactsContract.Data.RAW_CONTACT_ID + "=? AND " +
                                     ContactsContract.Data.MIMETYPE + "=?",
                                     new String[] { "" + rawId, ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE })
@@ -1285,11 +1364,11 @@ public class ContactAccessorSdk5 extends ContactAccessor {
                             contentValues.put(ContactsContract.CommonDataKinds.Organization.TITLE, getJsonString(org, "title"));
 
                             ops.add(ContentProviderOperation.newInsert(
-                                    ContactsContract.Data.CONTENT_URI).withValues(contentValues).build());
+                                    contentUri).withValues(contentValues).build());
                         }
                         // This is an existing organization so do a DB update
                         else {
-                            ops.add(ContentProviderOperation.newUpdate(ContactsContract.Data.CONTENT_URI)
+                            ops.add(ContentProviderOperation.newUpdate(contentUri)
                                     .withSelection(ContactsContract.CommonDataKinds.Organization._ID + "=? AND " +
                                             ContactsContract.Data.MIMETYPE + "=?",
                                             new String[] { orgId, ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE })
@@ -1313,7 +1392,7 @@ public class ContactAccessorSdk5 extends ContactAccessor {
             if (ims != null) {
                 // Delete all the ims
                 if (ims.length() == 0) {
-                    ops.add(ContentProviderOperation.newDelete(ContactsContract.Data.CONTENT_URI)
+                    ops.add(ContentProviderOperation.newDelete(contentUri)
                             .withSelection(ContactsContract.Data.RAW_CONTACT_ID + "=? AND " +
                                     ContactsContract.Data.MIMETYPE + "=?",
                                     new String[] { "" + rawId, ContactsContract.CommonDataKinds.Im.CONTENT_ITEM_TYPE })
@@ -1333,11 +1412,11 @@ public class ContactAccessorSdk5 extends ContactAccessor {
                             contentValues.put(ContactsContract.CommonDataKinds.Im.TYPE, getImType(getJsonString(im, "type")));
 
                             ops.add(ContentProviderOperation.newInsert(
-                                    ContactsContract.Data.CONTENT_URI).withValues(contentValues).build());
+                                    contentUri).withValues(contentValues).build());
                         }
                         // This is an existing IM so do a DB update
                         else {
-                            ops.add(ContentProviderOperation.newUpdate(ContactsContract.Data.CONTENT_URI)
+                            ops.add(ContentProviderOperation.newUpdate(contentUri)
                                     .withSelection(ContactsContract.CommonDataKinds.Im._ID + "=? AND " +
                                             ContactsContract.Data.MIMETYPE + "=?",
                                             new String[] { imId, ContactsContract.CommonDataKinds.Im.CONTENT_ITEM_TYPE })
@@ -1354,7 +1433,7 @@ public class ContactAccessorSdk5 extends ContactAccessor {
 
         // Modify note
         String note = getJsonString(contact, "note");
-        ops.add(ContentProviderOperation.newUpdate(ContactsContract.Data.CONTENT_URI)
+        ops.add(ContentProviderOperation.newUpdate(contentUri)
                 .withSelection(ContactsContract.Data.CONTACT_ID + "=? AND " +
                         ContactsContract.Data.MIMETYPE + "=?",
                         new String[] { id, ContactsContract.CommonDataKinds.Note.CONTENT_ITEM_TYPE })
@@ -1364,7 +1443,7 @@ public class ContactAccessorSdk5 extends ContactAccessor {
         // Modify nickname
         String nickname = getJsonString(contact, "nickname");
         if (nickname != null) {
-            ops.add(ContentProviderOperation.newUpdate(ContactsContract.Data.CONTENT_URI)
+            ops.add(ContentProviderOperation.newUpdate(contentUri)
                     .withSelection(ContactsContract.Data.CONTACT_ID + "=? AND " +
                             ContactsContract.Data.MIMETYPE + "=?",
                             new String[] { id, ContactsContract.CommonDataKinds.Nickname.CONTENT_ITEM_TYPE })
@@ -1380,7 +1459,7 @@ public class ContactAccessorSdk5 extends ContactAccessor {
                 // Delete all the websites
                 if (websites.length() == 0) {
                     Log.d(LOG_TAG, "This means we should be deleting all the phone numbers.");
-                    ops.add(ContentProviderOperation.newDelete(ContactsContract.Data.CONTENT_URI)
+                    ops.add(ContentProviderOperation.newDelete(contentUri)
                             .withSelection(ContactsContract.Data.RAW_CONTACT_ID + "=? AND " +
                                     ContactsContract.Data.MIMETYPE + "=?",
                                     new String[] { "" + rawId, ContactsContract.CommonDataKinds.Website.CONTENT_ITEM_TYPE })
@@ -1400,11 +1479,11 @@ public class ContactAccessorSdk5 extends ContactAccessor {
                             contentValues.put(ContactsContract.CommonDataKinds.Website.TYPE, getContactType(getJsonString(website, "type")));
 
                             ops.add(ContentProviderOperation.newInsert(
-                                    ContactsContract.Data.CONTENT_URI).withValues(contentValues).build());
+                                   contentUri).withValues(contentValues).build());
                         }
                         // This is an existing website so do a DB update
                         else {
-                            ops.add(ContentProviderOperation.newUpdate(ContactsContract.Data.CONTENT_URI)
+                            ops.add(ContentProviderOperation.newUpdate(contentUri)
                                     .withSelection(ContactsContract.CommonDataKinds.Website._ID + "=? AND " +
                                             ContactsContract.Data.MIMETYPE + "=?",
                                             new String[] { websiteId, ContactsContract.CommonDataKinds.Website.CONTENT_ITEM_TYPE })
@@ -1422,7 +1501,7 @@ public class ContactAccessorSdk5 extends ContactAccessor {
         // Modify birthday
         String birthday = getJsonString(contact, "birthday");
         if (birthday != null) {
-            ops.add(ContentProviderOperation.newUpdate(ContactsContract.Data.CONTENT_URI)
+            ops.add(ContentProviderOperation.newUpdate(contentUri)
                     .withSelection(ContactsContract.Data.CONTACT_ID + "=? AND " +
                             ContactsContract.Data.MIMETYPE + "=? AND " +
                             ContactsContract.CommonDataKinds.Event.TYPE + "=?",
@@ -1439,7 +1518,7 @@ public class ContactAccessorSdk5 extends ContactAccessor {
             if (photos != null) {
                 // Delete all the photos
                 if (photos.length() == 0) {
-                    ops.add(ContentProviderOperation.newDelete(ContactsContract.Data.CONTENT_URI)
+                    ops.add(ContentProviderOperation.newDelete(contentUri)
                             .withSelection(ContactsContract.Data.RAW_CONTACT_ID + "=? AND " +
                                     ContactsContract.Data.MIMETYPE + "=?",
                                     new String[] { "" + rawId, ContactsContract.CommonDataKinds.Photo.CONTENT_ITEM_TYPE })
@@ -1460,11 +1539,11 @@ public class ContactAccessorSdk5 extends ContactAccessor {
                             contentValues.put(ContactsContract.CommonDataKinds.Photo.PHOTO, bytes);
 
                             ops.add(ContentProviderOperation.newInsert(
-                                    ContactsContract.Data.CONTENT_URI).withValues(contentValues).build());
+                                    contentUri).withValues(contentValues).build());
                         }
                         // This is an existing photo so do a DB update
                         else {
-                            ops.add(ContentProviderOperation.newUpdate(ContactsContract.Data.CONTENT_URI)
+                            ops.add(ContentProviderOperation.newUpdate(contentUri)
                                     .withSelection(ContactsContract.CommonDataKinds.Photo._ID + "=? AND " +
                                             ContactsContract.Data.MIMETYPE + "=?",
                                             new String[] { photoId, ContactsContract.CommonDataKinds.Photo.CONTENT_ITEM_TYPE })
@@ -1478,6 +1557,49 @@ public class ContactAccessorSdk5 extends ContactAccessor {
         } catch (JSONException e) {
             Log.d(LOG_TAG, "Could not get photos");
         }
+
+        // ModifySync :
+        //Add contact type
+        contentUri = ContactsContract.RawContacts.CONTENT_URI;
+        if (callerIsSyncAdapter) {
+            contentUri = contentUri.buildUpon()
+                .appendQueryParameter(ContactsContract.CALLER_IS_SYNCADAPTER, "true")
+                .build();
+        }
+
+        ContentProviderOperation.Builder builder = ContentProviderOperation.newUpdate(contentUri);
+        builder.withSelection(ContactsContract.RawContacts._ID + "=?", new String[] { "" + rawId });
+
+
+        String sourceId = getJsonString(contact, "sourceId");
+        if (sourceId != null) {
+                builder.withValue(ContactsContract.RawContacts.SOURCE_ID, sourceId);
+        }
+
+        int dirty = contact.optBoolean("dirty") ? 1 : 0 ;
+        builder.withValue(ContactsContract.RawContacts.DIRTY, dirty);
+
+        String sync1 = getJsonString(contact, "sync1");
+        if (sync1 != null) {
+            builder.withValue(ContactsContract.RawContacts.SYNC1, sync1);
+        }
+
+        String sync2 = getJsonString(contact, "sync2");
+        if (sync2 != null) {
+            builder.withValue(ContactsContract.RawContacts.SYNC2, sync2);
+        }
+
+        String sync3 = getJsonString(contact, "sync3");
+        if (sync3 != null) {
+            builder.withValue(ContactsContract.RawContacts.SYNC3, sync3);
+        }
+
+        String sync4 = getJsonString(contact, "sync4");
+        if (sync4 != null) {
+            builder.withValue(ContactsContract.RawContacts.SYNC4, sync4);
+        }
+        ops.add(builder.build());
+
 
         boolean retVal = true;
 
@@ -1509,8 +1631,8 @@ public class ContactAccessorSdk5 extends ContactAccessor {
      * @param website the item to be inserted
      */
     private void insertWebsite(ArrayList<ContentProviderOperation> ops,
-            JSONObject website) {
-        ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+            JSONObject website, Uri contentUri) {
+        ops.add(ContentProviderOperation.newInsert(contentUri)
                 .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
                 .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Website.CONTENT_ITEM_TYPE)
                 .withValue(ContactsContract.CommonDataKinds.Website.DATA, getJsonString(website, "value"))
@@ -1524,8 +1646,8 @@ public class ContactAccessorSdk5 extends ContactAccessor {
      * @param ops the list of database actions
      * @param im the item to be inserted
      */
-    private void insertIm(ArrayList<ContentProviderOperation> ops, JSONObject im) {
-        ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+    private void insertIm(ArrayList<ContentProviderOperation> ops, JSONObject im, Uri contentUri) {
+        ops.add(ContentProviderOperation.newInsert(contentUri)
                 .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
                 .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Im.CONTENT_ITEM_TYPE)
                 .withValue(ContactsContract.CommonDataKinds.Im.DATA, getJsonString(im, "value"))
@@ -1540,8 +1662,8 @@ public class ContactAccessorSdk5 extends ContactAccessor {
      * @param org the item to be inserted
      */
     private void insertOrganization(ArrayList<ContentProviderOperation> ops,
-            JSONObject org) {
-        ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+            JSONObject org, Uri contentUri) {
+        ops.add(ContentProviderOperation.newInsert(contentUri)
                 .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
                 .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE)
                 .withValue(ContactsContract.CommonDataKinds.Organization.TYPE, getOrgType(getJsonString(org, "type")))
@@ -1558,8 +1680,8 @@ public class ContactAccessorSdk5 extends ContactAccessor {
      * @param address the item to be inserted
      */
     private void insertAddress(ArrayList<ContentProviderOperation> ops,
-            JSONObject address) {
-        ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+            JSONObject address, Uri contentUri) {
+        ops.add(ContentProviderOperation.newInsert(contentUri)
                 .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
                 .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.StructuredPostal.CONTENT_ITEM_TYPE)
                 .withValue(ContactsContract.CommonDataKinds.StructuredPostal.TYPE, getAddressType(getJsonString(address, "type")))
@@ -1579,8 +1701,8 @@ public class ContactAccessorSdk5 extends ContactAccessor {
      * @param email the item to be inserted
      */
     private void insertEmail(ArrayList<ContentProviderOperation> ops,
-            JSONObject email) {
-        ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+            JSONObject email, Uri contentUri) {
+        ops.add(ContentProviderOperation.newInsert(contentUri)
                 .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
                 .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE)
                 .withValue(ContactsContract.CommonDataKinds.Email.DATA, getJsonString(email, "value"))
@@ -1595,8 +1717,8 @@ public class ContactAccessorSdk5 extends ContactAccessor {
      * @param phone the item to be inserted
      */
     private void insertPhone(ArrayList<ContentProviderOperation> ops,
-            JSONObject phone) {
-        ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+            JSONObject phone, Uri contentUri) {
+        ops.add(ContentProviderOperation.newInsert(contentUri)
                 .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
                 .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE)
                 .withValue(ContactsContract.CommonDataKinds.Phone.NUMBER, getJsonString(phone, "value"))
@@ -1611,15 +1733,16 @@ public class ContactAccessorSdk5 extends ContactAccessor {
      * @param phone the item to be inserted
      */
     private void insertPhoto(ArrayList<ContentProviderOperation> ops,
-            JSONObject photo) {
+            JSONObject photo, Uri contentUri) {
         byte[] bytes = getPhotoBytes(photo);
-        ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+        ops.add(ContentProviderOperation.newInsert(contentUri)
                 .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
                 .withValue(ContactsContract.Data.IS_SUPER_PRIMARY, 1)
                 .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Photo.CONTENT_ITEM_TYPE)
                 .withValue(ContactsContract.CommonDataKinds.Photo.PHOTO, bytes)
                 .build());
     }
+
 
     /**
      * Gets the raw bytes from the supplied photo json object.
@@ -1699,22 +1822,65 @@ public class ContactAccessorSdk5 extends ContactAccessor {
      * @param contact the contact to be saved
      * @param account the account to be saved under
      */
-    private String createNewContact(JSONObject contact, String accountType, String accountName) {
+    private String createNewContact(JSONObject contact, String accountType, String accountName, boolean callerIsSyncAdapter) {
         // Create a list of attributes to add to the contact database
         ArrayList<ContentProviderOperation> ops = new ArrayList<ContentProviderOperation>();
 
         //Add contact type
-        ops.add(ContentProviderOperation.newInsert(ContactsContract.RawContacts.CONTENT_URI)
-                .withValue(ContactsContract.RawContacts.ACCOUNT_TYPE, accountType)
-                .withValue(ContactsContract.RawContacts.ACCOUNT_NAME, accountName)
-                .build());
+        Uri contentUri = ContactsContract.RawContacts.CONTENT_URI;
+        if (callerIsSyncAdapter) {
+            contentUri = ContactsContract.RawContacts.CONTENT_URI.buildUpon()
+                .appendQueryParameter(ContactsContract.CALLER_IS_SYNCADAPTER, "true")
+                .build();
+        }
+        ContentProviderOperation.Builder builder = ContentProviderOperation.newInsert(contentUri);
+
+        builder.withValue(ContactsContract.RawContacts.ACCOUNT_TYPE, accountType);
+        builder.withValue(ContactsContract.RawContacts.ACCOUNT_NAME, accountName);
+
+        String sourceId = getJsonString(contact, "sourceId");
+        if (sourceId != null) {
+                builder.withValue(ContactsContract.RawContacts.SOURCE_ID, sourceId);
+        }
+
+        int dirty = contact.optBoolean("dirty") ? 1 : 0 ;
+        builder.withValue(ContactsContract.RawContacts.DIRTY, dirty);
+
+        String sync1 = getJsonString(contact, "sync1");
+        if (sync1 != null) {
+            builder.withValue(ContactsContract.RawContacts.SYNC1, sync1);
+        }
+
+        String sync2 = getJsonString(contact, "sync2");
+        if (sync2 != null) {
+            builder.withValue(ContactsContract.RawContacts.SYNC2, sync2);
+        }
+
+        String sync3 = getJsonString(contact, "sync3");
+        if (sync3 != null) {
+            builder.withValue(ContactsContract.RawContacts.SYNC3, sync3);
+        }
+
+        String sync4 = getJsonString(contact, "sync4");
+        if (sync4 != null) {
+            builder.withValue(ContactsContract.RawContacts.SYNC4, sync4);
+        }
+        ops.add(builder.build());
+
+
+        contentUri = ContactsContract.Data.CONTENT_URI;
+        if (callerIsSyncAdapter) {
+            contentUri = contentUri.buildUpon()
+                .appendQueryParameter(ContactsContract.CALLER_IS_SYNCADAPTER, "true")
+                .build();
+        }
 
         // Add name
         try {
             JSONObject name = contact.optJSONObject("name");
             String displayName = contact.getString("displayName");
             if (displayName != null || name != null) {
-                ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+                ops.add(ContentProviderOperation.newInsert(contentUri)
                         .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
                         .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE)
                         .withValue(ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME, displayName)
@@ -1736,7 +1902,7 @@ public class ContactAccessorSdk5 extends ContactAccessor {
             if (phones != null) {
                 for (int i = 0; i < phones.length(); i++) {
                     JSONObject phone = (JSONObject) phones.get(i);
-                    insertPhone(ops, phone);
+                    insertPhone(ops, phone, contentUri);
                 }
             }
         } catch (JSONException e) {
@@ -1750,7 +1916,7 @@ public class ContactAccessorSdk5 extends ContactAccessor {
             if (emails != null) {
                 for (int i = 0; i < emails.length(); i++) {
                     JSONObject email = (JSONObject) emails.get(i);
-                    insertEmail(ops, email);
+                    insertEmail(ops, email, contentUri);
                 }
             }
         } catch (JSONException e) {
@@ -1764,7 +1930,7 @@ public class ContactAccessorSdk5 extends ContactAccessor {
             if (addresses != null) {
                 for (int i = 0; i < addresses.length(); i++) {
                     JSONObject address = (JSONObject) addresses.get(i);
-                    insertAddress(ops, address);
+                    insertAddress(ops, address, contentUri);
                 }
             }
         } catch (JSONException e) {
@@ -1778,7 +1944,7 @@ public class ContactAccessorSdk5 extends ContactAccessor {
             if (organizations != null) {
                 for (int i = 0; i < organizations.length(); i++) {
                     JSONObject org = (JSONObject) organizations.get(i);
-                    insertOrganization(ops, org);
+                    insertOrganization(ops, org, contentUri);
                 }
             }
         } catch (JSONException e) {
@@ -1792,7 +1958,7 @@ public class ContactAccessorSdk5 extends ContactAccessor {
             if (ims != null) {
                 for (int i = 0; i < ims.length(); i++) {
                     JSONObject im = (JSONObject) ims.get(i);
-                    insertIm(ops, im);
+                    insertIm(ops, im, contentUri);
                 }
             }
         } catch (JSONException e) {
@@ -1802,7 +1968,7 @@ public class ContactAccessorSdk5 extends ContactAccessor {
         // Add note
         String note = getJsonString(contact, "note");
         if (note != null) {
-            ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+            ops.add(ContentProviderOperation.newInsert(contentUri)
                     .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
                     .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Note.CONTENT_ITEM_TYPE)
                     .withValue(ContactsContract.CommonDataKinds.Note.NOTE, note)
@@ -1812,7 +1978,7 @@ public class ContactAccessorSdk5 extends ContactAccessor {
         // Add nickname
         String nickname = getJsonString(contact, "nickname");
         if (nickname != null) {
-            ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+            ops.add(ContentProviderOperation.newInsert(contentUri)
                     .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
                     .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Nickname.CONTENT_ITEM_TYPE)
                     .withValue(ContactsContract.CommonDataKinds.Nickname.NAME, nickname)
@@ -1826,7 +1992,7 @@ public class ContactAccessorSdk5 extends ContactAccessor {
             if (websites != null) {
                 for (int i = 0; i < websites.length(); i++) {
                     JSONObject website = (JSONObject) websites.get(i);
-                    insertWebsite(ops, website);
+                    insertWebsite(ops, website, contentUri);
                 }
             }
         } catch (JSONException e) {
@@ -1836,7 +2002,7 @@ public class ContactAccessorSdk5 extends ContactAccessor {
         // Add birthday
         String birthday = getJsonString(contact, "birthday");
         if (birthday != null) {
-            ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+            ops.add(ContentProviderOperation.newInsert(contentUri)
                     .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
                     .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Event.CONTENT_ITEM_TYPE)
                     .withValue(ContactsContract.CommonDataKinds.Event.TYPE, ContactsContract.CommonDataKinds.Event.TYPE_BIRTHDAY)
@@ -1851,7 +2017,7 @@ public class ContactAccessorSdk5 extends ContactAccessor {
             if (photos != null) {
                 for (int i = 0; i < photos.length(); i++) {
                     JSONObject photo = (JSONObject) photos.get(i);
-                    insertPhoto(ops, photo);
+                    insertPhoto(ops, photo, contentUri);
                 }
             }
         } catch (JSONException e) {

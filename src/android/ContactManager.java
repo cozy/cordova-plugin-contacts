@@ -106,10 +106,12 @@ public class ContactManager extends CordovaPlugin {
             final JSONObject contact = args.getJSONObject(0);
             final String accountType = args.optString(1, null);
             final String accountName = args.optString(2, null);
+            final Boolean callerIsSyncAdapter = args.optBoolean(3, false);
             this.cordova.getThreadPool().execute(new Runnable(){
                 public void run() {
                     JSONObject res = null;
-                    String id = contactAccessor.save(contact, accountType, accountName);
+                    String id = contactAccessor.save(contact, accountType,
+                        accountName, callerIsSyncAdapter);
                     Log.d(LOG_TAG, "Saved id: " + id);
                     if (id != null) {
                         try {

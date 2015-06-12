@@ -98,6 +98,12 @@ var Contact = function (id, displayName, name, nickname, phoneNumbers, emails, a
     this.photos = photos || null; // ContactField[]
     this.categories = categories || null; // ContactField[]
     this.urls = urls || null; // ContactField[]
+    this.sourceId = null;
+    this.dirty = null;
+    this.sync1 = null;
+    this.sync2 = null;
+    this.sync3 = null;
+    this.sync4 = null;
 };
 
 /**
@@ -176,7 +182,8 @@ Contact.prototype.save = function(successCB, errorCB, options) {
     options = options || {};
     var accountType = options.accountType;
     var accountName = options.accountName;
-    exec(success, fail, "Contacts", "save", [dupContact, accountType, accountName]);
+    var callerIsSyncAdapter = options.callerIsSyncAdapter == true;
+    exec(success, fail, "Contacts", "save", [dupContact, accountType, accountName, callerIsSyncAdapter]);
 };
 
 

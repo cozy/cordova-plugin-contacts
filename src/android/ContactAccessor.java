@@ -147,7 +147,7 @@ public abstract class ContactAccessor {
      */
     public abstract String save(JSONObject contact);
 
-    public abstract String save(JSONObject contact, String accountType, String accountName);
+    public abstract String save(JSONObject contact, String accountType, String accountName, boolean callerIsSyncAdapter);
     /**
      * Handles searching through SDK-specific contacts API.
      */

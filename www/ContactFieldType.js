@@ -49,7 +49,17 @@
         region:         "region",
         streetAddress:  "streetAddress",
         title:          "title",
-        urls:           "urls"
+        urls:           "urls",
+
+        // ims commons values
+
+        dirty:          "dirty",
+        sourceId:       "sourceId",
+        sync1:          "sync1",
+        sync2:          "sync2",
+        sync3:          "sync3",
+        sync4:          "sync4",
+
     };
 
     module.exports = fieldType;
