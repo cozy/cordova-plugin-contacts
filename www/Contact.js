@@ -100,6 +100,7 @@ var Contact = function (id, displayName, name, nickname, phoneNumbers, emails, a
     this.urls = urls || null; // ContactField[]
     this.sourceId = null;
     this.dirty = null;
+    this.deleted = null;
     this.sync1 = null;
     this.sync2 = null;
     this.sync3 = null;
@@ -110,17 +111,22 @@ var Contact = function (id, displayName, name, nickname, phoneNumbers, emails, a
 * Removes contact from device storage.
 * @param successCB success callback
 * @param errorCB error callback
+* @param options (optional) set callerIsSyncAdapter.
 */
-Contact.prototype.remove = function(successCB, errorCB) {
-    argscheck.checkArgs('FF', 'Contact.remove', arguments);
+Contact.prototype.remove = function(successCB, errorCB, options) {
+    argscheck.checkArgs('FFO', 'Contact.remove', arguments);
     var fail = errorCB && function(code) {
         errorCB(new ContactError(code));
     };
+
+    options = options || {};
+    var callerIsSyncAdapter = options.callerIsSyncAdapter == true;
     if (this.id === null) {
         fail(ContactError.UNKNOWN_ERROR);
     }
     else {
-        exec(successCB, fail, "Contacts", "remove", [this.id]);
+        exec(successCB, fail, "Contacts", "remove",
+            [this.id, callerIsSyncAdapter]);
     }
 };
 
@@ -156,9 +162,9 @@ Contact.prototype.clone = function() {
 
 /**
 * Persists contact to device storage.
-* @param options (optional), accountType and accountName to save in.
 * @param successCB success callback
 * @param errorCB error callback
+* @param options (optional), accountType and accountName to save in.
 */
 Contact.prototype.save = function(successCB, errorCB, options) {
 

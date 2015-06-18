@@ -125,6 +125,14 @@ public class ContactAccessorSdk5 extends ContactAccessor {
         dbMap.put("urls.value", ContactsContract.CommonDataKinds.Website.URL);
 
         dbMap.put("dirty", ContactsContract.RawContacts.DIRTY);
+        dbMap.put("deleted", ContactsContract.RawContacts.DELETED);
+        dbMap.put("sourceId", ContactsContract.RawContacts.SOURCE_ID);
+        dbMap.put("sync1", ContactsContract.RawContacts.SYNC1);
+        dbMap.put("sync2", ContactsContract.RawContacts.SYNC2);
+        dbMap.put("sync3", ContactsContract.RawContacts.SYNC3);
+        dbMap.put("sync4", ContactsContract.RawContacts.SYNC4);
+
+
 
     }
 
@@ -224,6 +232,7 @@ public class ContactAccessorSdk5 extends ContactAccessor {
         columnsToFetch.add(ContactsContract.RawContacts.VERSION);
 
         columnsToFetch.add(ContactsContract.RawContacts.DIRTY);
+        columnsToFetch.add(ContactsContract.RawContacts.DELETED);
         columnsToFetch.add(ContactsContract.RawContacts.SOURCE_ID);
         columnsToFetch.add(ContactsContract.RawContacts.SYNC1);
         columnsToFetch.add(ContactsContract.RawContacts.SYNC2);
@@ -365,6 +374,7 @@ public class ContactAccessorSdk5 extends ContactAccessor {
         int version = 0;
         boolean dirty = false;
         String sourceId = "";
+        boolean deleted = false;
         String sync1 = "";
         String sync2 = "";
         String sync3 = "";
@@ -393,6 +403,7 @@ public class ContactAccessorSdk5 extends ContactAccessor {
         int colVersion = c.getColumnIndex(ContactsContract.RawContacts.VERSION);
         int colDirty = c.getColumnIndex(ContactsContract.RawContacts.DIRTY);
         int colSourceId = c.getColumnIndex(ContactsContract.RawContacts.SOURCE_ID);
+        int colDeleted = c.getColumnIndex(ContactsContract.RawContacts.DELETED);
         int colSync1 = c.getColumnIndex(ContactsContract.RawContacts.SYNC1);
         int colSync2 = c.getColumnIndex(ContactsContract.RawContacts.SYNC2);
         int colSync3 = c.getColumnIndex(ContactsContract.RawContacts.SYNC3);
@@ -407,6 +418,7 @@ public class ContactAccessorSdk5 extends ContactAccessor {
                     version = c.getInt(colVersion);
                     dirty = c.getInt(colDirty) == 1;
                     sourceId = c.getString(colSourceId);
+                    deleted = c.getInt(colDeleted) == 1;
                     sync1 = c.getString(colSync1);
                     sync2 = c.getString(colSync2);
                     sync3 = c.getString(colSync3);
@@ -450,6 +462,7 @@ public class ContactAccessorSdk5 extends ContactAccessor {
                         contact.put("version", version);
                         contact.put("dirty", dirty);
                         contact.put("sourceId", sourceId);
+                        contact.put("deleted", deleted);
                         contact.put("sync1", sync1);
                         contact.put("sync2", sync2);
                         contact.put("sync3", sync3);
@@ -752,6 +765,10 @@ public class ContactAccessorSdk5 extends ContactAccessor {
                         whereArgs.add(searchTerm);
                     }
                     else if (key.startsWith("dirty")) {
+                        where.add("(" + dbMap.get(key) + " LIKE ? )");
+                        whereArgs.add(searchTerm);
+                    }
+                    else if (key.startsWith("deleted")) {
                         where.add("(" + dbMap.get(key) + " LIKE ? )");
                         whereArgs.add(searchTerm);
                     }
@@ -1579,6 +1596,10 @@ public class ContactAccessorSdk5 extends ContactAccessor {
         int dirty = contact.optBoolean("dirty") ? 1 : 0 ;
         builder.withValue(ContactsContract.RawContacts.DIRTY, dirty);
 
+        int deleted = contact.optBoolean("deleted") ? 1 : 0 ;
+        builder.withValue(ContactsContract.RawContacts.DELETED, deleted);
+
+
         String sync1 = getJsonString(contact, "sync1");
         if (sync1 != null) {
             builder.withValue(ContactsContract.RawContacts.SYNC1, sync1);
@@ -1846,6 +1867,9 @@ public class ContactAccessorSdk5 extends ContactAccessor {
         int dirty = contact.optBoolean("dirty") ? 1 : 0 ;
         builder.withValue(ContactsContract.RawContacts.DIRTY, dirty);
 
+        int deleted = contact.optBoolean("deleted") ? 1 : 0 ;
+        builder.withValue(ContactsContract.RawContacts.DELETED, deleted);
+
         String sync1 = getJsonString(contact, "sync1");
         if (sync1 != null) {
             builder.withValue(ContactsContract.RawContacts.SYNC1, sync1);
@@ -2039,14 +2063,27 @@ public class ContactAccessorSdk5 extends ContactAccessor {
         return newId;
     }
 
-    @Override
     /**
      * This method will remove a Contact from the database based on ID.
      * @param id the unique ID of the contact to remove
      */
+    @Override
     public boolean remove(String id) {
+        return remove(id, false);
+    }
+
+
+    @Override
+    /**
+     * This method will remove a Contact from the database based on ID.
+     * @param id the unique ID of the contact to remove
+     * @param callerIsSyncAdapter trully remove or just set DELETED and DIRTY falgs : See  http://developer.android.com/reference/android/provider/ContactsContract.RawContacts.html §delete .
+     */
+    public boolean remove(String id, boolean callerIsSyncAdapter) {
+
         int result = 0;
-        Cursor cursor = mApp.getActivity().getContentResolver().query(ContactsContract.Contacts.CONTENT_URI,
+        Cursor cursor = mApp.getActivity().getContentResolver().query(
+                ContactsContract.Contacts.CONTENT_URI,
                 null,
                 ContactsContract.Contacts._ID + " = ?",
                 new String[] { id }, null);
@@ -2054,6 +2091,10 @@ public class ContactAccessorSdk5 extends ContactAccessor {
             cursor.moveToFirst();
             String lookupKey = cursor.getString(cursor.getColumnIndex(ContactsContract.Contacts.LOOKUP_KEY));
             Uri uri = Uri.withAppendedPath(ContactsContract.Contacts.CONTENT_LOOKUP_URI, lookupKey);
+            if (callerIsSyncAdapter) {
+            uri = uri.buildUpon().appendQueryParameter(
+                    ContactsContract.CALLER_IS_SYNCADAPTER, "true").build();
+            }
             result = mApp.getActivity().getContentResolver().delete(uri, null, null);
         } else {
             Log.d(LOG_TAG, "Could not find contact with ID");

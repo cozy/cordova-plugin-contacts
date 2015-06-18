@@ -54,6 +54,7 @@
         // ims commons values
 
         dirty:          "dirty",
+        deleted:        "deleted",
         sourceId:       "sourceId",
         sync1:          "sync1",
         sync2:          "sync2",

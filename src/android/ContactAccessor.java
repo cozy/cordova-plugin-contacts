@@ -171,6 +171,10 @@ public abstract class ContactAccessor {
      */
     public abstract boolean remove(String id);
 
+    // Enhanced for android.
+    public abstract boolean remove(String id, boolean callerIsSyncAdapter);
+
+
    /**
      * A class that represents the where clause to be used in the database query
      */
