@@ -189,7 +189,9 @@ Contact.prototype.save = function(successCB, errorCB, options) {
     var accountType = options.accountType;
     var accountName = options.accountName;
     var callerIsSyncAdapter = options.callerIsSyncAdapter == true;
-    exec(success, fail, "Contacts", "save", [dupContact, accountType, accountName, callerIsSyncAdapter]);
+    var resetFields = options.resetFields == true;
+    exec(success, fail, "Contacts", "save",
+        [dupContact, accountType, accountName, callerIsSyncAdapter, resetFields]);
 };
 
 
