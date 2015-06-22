@@ -29,12 +29,13 @@ var argscheck = require('cordova/argscheck'),
 * Currently only used for Date fields
 */
 function convertIn(contact) {
-    var value = contact.birthday;
-    try {
-      contact.birthday = new Date(parseFloat(value));
-    } catch (exception){
-      console.log("Cordova Contact convertIn error: exception creating date.");
-    }
+    // var value = contact.birthday;
+    // try {
+    //   // contact.birthday = new Date(parseFloat(value));
+    //   contact.birthday = new Date(value);
+    // } catch (exception){
+    //   console.log("Cordova Contact convertIn error: exception creating date.");
+    // }
     return contact;
 }
 
@@ -44,21 +45,23 @@ function convertIn(contact) {
 **/
 
 function convertOut(contact) {
-    var value = contact.birthday;
-    if (value !== null) {
-        // try to make it a Date object if it is not already
-        if (!utils.isDate(value)){
-            try {
-                value = new Date(value);
-            } catch(exception){
-                value = null;
-            }
-        }
-        if (utils.isDate(value)){
-            value = value.valueOf(); // convert to milliseconds
-        }
-        contact.birthday = value;
-    }
+    // var value = contact.birthday;
+    // if (value !== null) {
+    //     // try to make it a Date object if it is not already
+    //     if (!utils.isDate(value)){
+    //         try {
+    //             value = new Date(value);
+    //         } catch(exception){
+    //             value = null;
+    //         }
+    //     }
+    //     if (utils.isDate(value)){
+    //         //TODO patch :value = value.valueOf(); // convert to milliseconds
+    //         // Android expects ISO8601 date string.
+    //         value = value.toISOString().slice(0, 10);
+    //     }
+    //     contact.birthday = value;
+    // }
     return contact;
 }
 

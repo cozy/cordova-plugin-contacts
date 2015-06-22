@@ -992,7 +992,12 @@ public class ContactAccessorSdk5 extends ContactAccessor {
             im.put("id", cursor.getString(cursor.getColumnIndex(ContactsContract.CommonDataKinds.Im._ID)));
             im.put("pref", false); // Android does not store pref attribute
             im.put("value", cursor.getString(cursor.getColumnIndex(ContactsContract.CommonDataKinds.Im.DATA)));
-            im.put("type", getImType(cursor.getString(cursor.getColumnIndex(ContactsContract.CommonDataKinds.Im.PROTOCOL))));
+            String type = getImType(cursor.getInt(cursor.getColumnIndex(ContactsContract.CommonDataKinds.Im.PROTOCOL)));
+            if ("custom".equals(type)) {
+                type = cursor.getString(cursor.getColumnIndex(ContactsContract.CommonDataKinds.Im.CUSTOM_PROTOCOL));
+            }
+            im.put("type", type);
+
         } catch (JSONException e) {
             Log.e(LOG_TAG, e.getMessage(), e);
         }
@@ -1410,14 +1415,23 @@ public class ContactAccessorSdk5 extends ContactAccessor {
                 // Modify or add a im
                 for (int i = 0; i < ims.length(); i++) {
                     JSONObject im = (JSONObject) ims.get(i);
+                    ContentValues contentValues = new ContentValues();
+                    contentValues.put(ContactsContract.CommonDataKinds.Im.DATA, getJsonString(im, "value"));
+
+                    String imType = getJsonString(im, "type");
+                    int imTypeCode = getImType(imType);
+                    contentValues.put(ContactsContract.CommonDataKinds.Im.PROTOCOL, imTypeCode);
+
+                    if (imTypeCode == ContactsContract.CommonDataKinds.Im.PROTOCOL_CUSTOM) {
+                        contentValues.put(ContactsContract.CommonDataKinds.Im.CUSTOM_PROTOCOL, imType);
+                    }
+
                     String imId = getJsonString(im, "id");
                     // This is a new IM so do a DB insert
                     if (imId == null || resetFields) {
-                        ContentValues contentValues = new ContentValues();
                         contentValues.put(ContactsContract.Data.RAW_CONTACT_ID, rawId);
                         contentValues.put(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Im.CONTENT_ITEM_TYPE);
-                        contentValues.put(ContactsContract.CommonDataKinds.Im.DATA, getJsonString(im, "value"));
-                        contentValues.put(ContactsContract.CommonDataKinds.Im.TYPE, getImType(getJsonString(im, "type")));
+
 
                         ops.add(ContentProviderOperation.newInsert(
                                 contentUri).withValues(contentValues).build());
@@ -1428,8 +1442,7 @@ public class ContactAccessorSdk5 extends ContactAccessor {
                                 .withSelection(ContactsContract.CommonDataKinds.Im._ID + "=? AND " +
                                         ContactsContract.Data.MIMETYPE + "=?",
                                         new String[] { imId, ContactsContract.CommonDataKinds.Im.CONTENT_ITEM_TYPE })
-                                .withValue(ContactsContract.CommonDataKinds.Im.DATA, getJsonString(im, "value"))
-                                .withValue(ContactsContract.CommonDataKinds.Im.TYPE, getContactType(getJsonString(im, "type")))
+                                .withValues(contentValues)
                                 .build());
                     }
                 }
@@ -1654,12 +1667,20 @@ public class ContactAccessorSdk5 extends ContactAccessor {
      * @param im the item to be inserted
      */
     private void insertIm(ArrayList<ContentProviderOperation> ops, JSONObject im, Uri contentUri) {
-        ops.add(ContentProviderOperation.newInsert(contentUri)
-                .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
-                .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Im.CONTENT_ITEM_TYPE)
-                .withValue(ContactsContract.CommonDataKinds.Im.DATA, getJsonString(im, "value"))
-                .withValue(ContactsContract.CommonDataKinds.Im.TYPE, getImType(getJsonString(im, "type")))
-                .build());
+        ContentProviderOperation.Builder builder = ContentProviderOperation.newInsert(contentUri);
+        builder.withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0);
+        builder.withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Im.CONTENT_ITEM_TYPE);
+        builder.withValue(ContactsContract.CommonDataKinds.Im.DATA, getJsonString(im, "value"));
+
+        String imType = getJsonString(im, "type");
+        int imTypeCode = getImType(imType);
+        builder.withValue(ContactsContract.CommonDataKinds.Im.PROTOCOL, imTypeCode);
+
+        if (imTypeCode == ContactsContract.CommonDataKinds.Im.PROTOCOL_CUSTOM) {
+            builder.withValue(ContactsContract.CommonDataKinds.Im.CUSTOM_PROTOCOL, imType);
+        }
+
+        ops.add(builder.build());
     }
 
     /**
