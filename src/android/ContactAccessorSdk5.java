@@ -200,17 +200,17 @@ public class ContactAccessorSdk5 extends ContactAccessor {
 
         // Get all the id's where the search term matches the fields passed in.
         Cursor idCursor = mApp.getActivity().getContentResolver().query(RawContactsEntity.CONTENT_URI,
-                new String[] { ContactsContract.Data.CONTACT_ID },
+                new String[] { ContactsContract.RawContacts._ID },
                 whereOptions.getWhere(),
                 whereOptions.getWhereArgs(),
-                ContactsContract.Data.CONTACT_ID + " ASC");
+                ContactsContract.RawContacts._ID + " ASC");
 
         // Create a set of unique ids
         Set<String> contactIds = new HashSet<String>();
         int idColumn = -1;
         while (idCursor.moveToNext()) {
             if (idColumn < 0) {
-                idColumn = idCursor.getColumnIndex(ContactsContract.Data.CONTACT_ID);
+                idColumn = idCursor.getColumnIndex(ContactsContract.RawContacts._ID);
 
             }
             contactIds.add(idCursor.getString(idColumn));
@@ -225,7 +225,6 @@ public class ContactAccessorSdk5 extends ContactAccessor {
         // Determine which columns we should be fetching.
         HashSet<String> columnsToFetch = new HashSet<String>();
         columnsToFetch.add(ContactsContract.Data.CONTACT_ID);
-        // columnsToFetch.add(ContactsContract.Data.RAW_CONTACT_ID);
         columnsToFetch.add(ContactsContract.RawContacts._ID);
 
         columnsToFetch.add(ContactsContract.Data.MIMETYPE);
@@ -300,18 +299,17 @@ public class ContactAccessorSdk5 extends ContactAccessor {
         }
         if (isRequired("photos", populate)) {
             columnsToFetch.add(ContactsContract.CommonDataKinds.Photo._ID);
+            columnsToFetch.add(ContactsContract.CommonDataKinds.Photo.PHOTO);
         }
 
         // Do the id query
         Cursor c = mApp.getActivity().getContentResolver().query(
-            // ContactsContract.Data.CONTENT_URI,
             RawContactsEntity.CONTENT_URI,
 
                 columnsToFetch.toArray(new String[] {}),
                 idOptions.getWhere(),
                 idOptions.getWhereArgs(),
-                // ContactsContract.Data.CONTACT_ID + " ASC");
-                ContactsContract.Data.CONTACT_ID + " ASC");
+                ContactsContract.RawContacts._ID + " ASC");
 
         JSONArray contacts = populateContactArray(limit, populate, c);
         return contacts;
@@ -320,7 +318,7 @@ public class ContactAccessorSdk5 extends ContactAccessor {
     /**
      * A special search that finds one contact by id
      *
-     * @param id   contact to find by id
+     * @param id   contact to find by id (rawId)
      * @return     a JSONObject representing the contact
      * @throws JSONException
      */
@@ -413,7 +411,7 @@ public class ContactAccessorSdk5 extends ContactAccessor {
         if (c.getCount() > 0) {
             while (c.moveToNext() && (contacts.length() <= (limit - 1))) {
                 try {
-                    contactId = c.getString(colContactId);
+                    contactId = c.getString(colContactId); // may be null (if contact has been dissociated.)
                     rawId = c.getString(colRawContactId);
                     version = c.getInt(colVersion);
                     dirty = c.getInt(colDirty) == 1;
@@ -426,12 +424,12 @@ public class ContactAccessorSdk5 extends ContactAccessor {
 
                     // If we are in the first row set the oldContactId
                     if (c.getPosition() == 0) {
-                        oldContactId = contactId;
+                        oldContactId = rawId;
                     }
 
                     // When the contact ID changes we need to push the Contact object
                     // to the array of contacts and create new objects.
-                    if (!oldContactId.equals(contactId)) {
+                    if (!oldContactId.equals(rawId)) {
                         // Populate the Contact object with it's arrays
                         // and push the contact into the contacts array
                         contacts.put(populateContact(contact, organizations, addresses, phones,
@@ -520,7 +518,7 @@ public class ContactAccessorSdk5 extends ContactAccessor {
                     }
                     else if (mimetype.equals(ContactsContract.CommonDataKinds.Photo.CONTENT_ITEM_TYPE)
                             && isRequired("photos", populate)) {
-                        JSONObject photo = photoQuery(c, contactId);
+                        JSONObject photo = photoQuery(c, rawId);
                         if (photo != null) {
                             photos.put(photo);
                         }
@@ -530,7 +528,7 @@ public class ContactAccessorSdk5 extends ContactAccessor {
                 }
 
                 // Set the old contact ID
-                oldContactId = contactId;
+                oldContactId = rawId;
 
             }
 
@@ -547,7 +545,7 @@ public class ContactAccessorSdk5 extends ContactAccessor {
     /**
      * Builds a where clause all all the ids passed into the method
      * @param contactIds a set of unique contact ids
-     * @param searchTerm what to search for
+     * @param allContacts means all rawcontact in android.
      * @return an object containing the selection and selection args
      */
     private WhereOptions buildIdClause(Set<String> contactIds, boolean allContacts) {
@@ -557,7 +555,7 @@ public class ContactAccessorSdk5 extends ContactAccessor {
         // If the user is searching for every contact then short circuit the method
         // and return a shorter where clause to be searched.
         if (allContacts) {
-            options.setWhere("(" + ContactsContract.Data.CONTACT_ID + " LIKE ? )");
+            options.setWhere("(" + ContactsContract.RawContacts._ID + " LIKE ? )");
             options.setWhereArgs(new String[] { "%" });
             return options;
         }
@@ -574,7 +572,7 @@ public class ContactAccessorSdk5 extends ContactAccessor {
         }
         buffer.append(")");
 
-        options.setWhere(ContactsContract.Data.CONTACT_ID + " IN " + buffer.toString());
+        options.setWhere(ContactsContract.RawContacts._ID + " IN " + buffer.toString());
         options.setWhereArgs(null);
 
         return options;
@@ -1025,28 +1023,34 @@ public class ContactAccessorSdk5 extends ContactAccessor {
     /**
      * Create a ContactField JSONObject
      * @param contactId
-     * @return a JSONObject representing a ContactField
+     * @return a JSONObgject representing a ContactField
      */
-    private JSONObject photoQuery(Cursor cursor, String contactId) {
+    private JSONObject photoQuery(Cursor cursor, String rawContactId) {
         JSONObject photo = new JSONObject();
         try {
             photo.put("id", cursor.getString(cursor.getColumnIndex(ContactsContract.CommonDataKinds.Photo._ID)));
             photo.put("pref", false);
-            photo.put("type", "url");
-            Uri person = ContentUris.withAppendedId(ContactsContract.Contacts.CONTENT_URI, (Long.valueOf(contactId)));
-            Uri photoUri = Uri.withAppendedPath(person, ContactsContract.Contacts.Photo.CONTENT_DIRECTORY);
-            photo.put("value", photoUri.toString());
+            photo.put("type", "base64");
 
-            // Query photo existance
-            Cursor photoCursor = mApp.getActivity().getContentResolver().query(photoUri, new String[] {ContactsContract.Contacts.Photo.PHOTO}, null, null, null);
-            if (photoCursor == null) {
-                return null;
-            } else {
-                if (!photoCursor.moveToFirst()) {
-                    photoCursor.close();
-                    return null;
-                }
-            }
+            byte[] photoBlob = cursor.getBlob(cursor.getColumnIndex(
+                    ContactsContract.CommonDataKinds.Photo.PHOTO));
+            photo.put("value", Base64.encodeToString(photoBlob, Base64.DEFAULT));
+
+            // photo.put("type", "url");
+            // Uri person = ContentUris.withAppendedId(ContactsContract.RawContacts.CONTENT_URI, (Long.valueOf(rawContactId)));
+            // Uri photoUri = Uri.withAppendedPath(person, ContactsContract.RawContacts.DisplayPhoto.CONTENT_DIRECTORY);
+            // photo.put("value", photoUri.toString());
+
+            // // Query photo existance
+            // Cursor photoCursor = mApp.getActivity().getContentResolver().query(photoUri, new String[] {ContactsContract.Contacts.Photo.PHOTO}, null, null, null);
+            // if (photoCursor == null) {
+            //     return null;
+            // } else {
+            //     if (!photoCursor.moveToFirst()) {
+            //         photoCursor.close();
+            //         return null;
+            //     }
+            // }
         } catch (JSONException e) {
             Log.e(LOG_TAG, e.getMessage(), e);
         }
@@ -2083,32 +2087,24 @@ public class ContactAccessorSdk5 extends ContactAccessor {
     @Override
     /**
      * This method will remove a Contact from the database based on ID.
-     * @param id the unique ID of the contact to remove
+     * @param id the unique ID of the contact to remove (rawId)
      * @param callerIsSyncAdapter trully remove or just set DELETED and DIRTY falgs : See  http://developer.android.com/reference/android/provider/ContactsContract.RawContacts.html §delete .
      */
-    public boolean remove(String id, boolean callerIsSyncAdapter) {
-
-        int result = 0;
-        Cursor cursor = mApp.getActivity().getContentResolver().query(
-                ContactsContract.Contacts.CONTENT_URI,
-                null,
-                ContactsContract.Contacts._ID + " = ?",
-                new String[] { id }, null);
-        if (cursor.getCount() == 1) {
-            cursor.moveToFirst();
-            String lookupKey = cursor.getString(cursor.getColumnIndex(ContactsContract.Contacts.LOOKUP_KEY));
-            Uri uri = Uri.withAppendedPath(ContactsContract.Contacts.CONTENT_LOOKUP_URI, lookupKey);
-            if (callerIsSyncAdapter) {
+    public boolean remove(String rawId, boolean callerIsSyncAdapter) {
+        Uri uri = ContactsContract.RawContacts.CONTENT_URI;
+        if (callerIsSyncAdapter) {
             uri = uri.buildUpon().appendQueryParameter(
                     ContactsContract.CALLER_IS_SYNCADAPTER, "true").build();
-            }
-            result = mApp.getActivity().getContentResolver().delete(uri, null, null);
-        } else {
-            Log.d(LOG_TAG, "Could not find contact with ID");
         }
+
+        int result = mApp.getActivity().getContentResolver().delete(
+            uri,
+            ContactsContract.RawContacts._ID + " = ?",
+            new String[] { rawId });
 
         return (result > 0) ? true : false;
     }
+
 
     /**************************************************************************
      *

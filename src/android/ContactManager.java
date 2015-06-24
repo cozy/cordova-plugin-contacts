@@ -131,10 +131,12 @@ public class ContactManager extends CordovaPlugin {
             });
         }
         else if (action.equals("remove")) {
-            final String contactId = args.getString(0);
+            final String rawContactId = args.getString(0);
+            final Boolean callerIsSyncAdapter = args.optBoolean(1, false);
+
             this.cordova.getThreadPool().execute(new Runnable() {
                 public void run() {
-                    if (contactAccessor.remove(contactId)) {
+                    if (contactAccessor.remove(rawContactId, callerIsSyncAdapter)) {
                         callbackContext.success();
                     } else {
                         callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, UNKNOWN_ERROR));

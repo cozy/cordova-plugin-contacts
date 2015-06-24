@@ -124,12 +124,12 @@ Contact.prototype.remove = function(successCB, errorCB, options) {
 
     options = options || {};
     var callerIsSyncAdapter = options.callerIsSyncAdapter == true;
-    if (this.id === null) {
+    if (this.rawId === null) {
         fail(ContactError.UNKNOWN_ERROR);
     }
     else {
         exec(successCB, fail, "Contacts", "remove",
-            [this.id, callerIsSyncAdapter]);
+            [this.rawId, callerIsSyncAdapter]);
     }
 };
 
