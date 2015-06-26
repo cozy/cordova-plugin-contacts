@@ -21,15 +21,15 @@
 <plugin xmlns="http://apache.org/cordova/ns/plugins/1.0"
     xmlns:rim="http://www.blackberry.com/ns/widgets"
     xmlns:android="http://schemas.android.com/apk/res/android"
-    id="org.apache.cordova.contacts"
+    id="io.cozy.contacts"
     version="0.2.17-dev">
 
     <name>Contacts</name>
     <description>Cordova Contacts Plugin</description>
     <license>Apache 2.0</license>
     <keywords>cordova,contacts</keywords>
-    <repo>https://git-wip-us.apache.org/repos/asf/cordova-plugin-contacts.git</repo>
-    <issue>https://issues.apache.org/jira/browse/CB/component/12320652</issue>
+    <repo>https://github.com/jacquarg/cordova-plugin-contacts.git</repo>
+    <issue>https://github.com/jacquarg/cordova-plugin-contacts/issues</issue>
 
     <js-module src="www/contacts.js" name="contacts">
         <clobbers target="navigator.contacts" />
