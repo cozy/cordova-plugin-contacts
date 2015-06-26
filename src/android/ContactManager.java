@@ -147,11 +147,16 @@ public class ContactManager extends CordovaPlugin {
         else if (action.equals("pickContact")) {
             pickContactAsync();
         }
-        // TODO : cleanup !
         else if (action.equals("createAccount")) {
-            createAccount();
+            final String accountName = args.getString(0);
+            final String accountType = args.getString(1);
+            createAccount(accountName, accountType);
+
             callbackContext.success();
-            // listAccounts();
+        }
+        else if (action.equals("listAccounts")) {
+            JSONArray accounts = listAccounts();
+            callbackContext.success(accounts);
         }
 
         else {
@@ -160,29 +165,36 @@ public class ContactManager extends CordovaPlugin {
         return true;
     }
 
-    // TODO !!
-    private void createAccount() {
+
+    private void createAccount(String accountName, String accountType) {
         AccountManager accountManager = AccountManager.get(ContactManager.this.cordova.getActivity());
+
         // Create account if not exist.
         for (Account c: accountManager.getAccounts()) {
-            Log.d("CordovaContacts", c.type + ", " + c.name);
-            if ("io.cozy".equals(c.type) && "myCozy".equals(c.name)) {
+            if (accountType.equals(c.type) && accountName.equals(c.name)) {
                 return; // skip creation.
             }
         }
 
-        Account account = new Account("myCozy", "io.cozy");
-
-        // ContentResolver.setIsSyncable(account, ContactsContract.AUTHORITY, 1);
-        // ContentResolver.setSyncAutomatically(account, ContactsContract.AUTHORITY, true);
+        Account account = new Account(accountName, accountType);
         accountManager.addAccountExplicitly(account, null, null);
     }
 
-    private void listAccounts() {
+    private JSONArray listAccounts() {
         AccountManager accountManager = AccountManager.get(ContactManager.this.cordova.getActivity());
-        for (Account c: accountManager.getAccounts()) {
-            Log.d("CordovaContacts", c.type + ", " + c.name);
+        JSONArray accounts = new JSONArray();
+        try {
+            for (Account c: accountManager.getAccounts()) {
+                JSONObject account = new JSONObject();
+                account.put("type", c.type);
+                account.put("name", c.name);
+
+                accounts.put(account);
+            }
+        } catch (JSONException e) {
+            Log.e(LOG_TAG, "JSON fail.", e);
         }
+        return accounts;
     }
 
     /**

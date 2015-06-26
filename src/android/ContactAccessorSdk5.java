@@ -120,7 +120,6 @@ public class ContactAccessorSdk5 extends ContactAccessor {
         dbMap.put("birthday", ContactsContract.CommonDataKinds.Event.CONTENT_ITEM_TYPE);
         dbMap.put("note", ContactsContract.CommonDataKinds.Note.NOTE);
         dbMap.put("photos.value", ContactsContract.CommonDataKinds.Photo.CONTENT_ITEM_TYPE);
-        //dbMap.put("categories.value", null);
         dbMap.put("urls", ContactsContract.CommonDataKinds.Website.URL);
         dbMap.put("urls.value", ContactsContract.CommonDataKinds.Website.URL);
 
@@ -187,10 +186,6 @@ public class ContactAccessorSdk5 extends ContactAccessor {
             allContacts = true;
         }
 
-
-        // Log.d(LOG_TAG, "Search Term = " + searchTerm);
-        //Log.d(LOG_TAG, "Field Length = " + fields.length());
-        //Log.d(LOG_TAG, "Fields = " + fields.toString());
 
         // Loop through the fields the user provided to see what data should be returned.
         HashMap<String, Boolean> populate = buildPopulationSet(options);
@@ -331,13 +326,10 @@ public class ContactAccessorSdk5 extends ContactAccessor {
     public JSONObject getContactById(String id, JSONArray desiredFields) throws JSONException {
         // Do the id query
         Cursor c = mApp.getActivity().getContentResolver().query(
-                // ContactsContract.Data.CONTENT_URI,
                 RawContactsEntity.CONTENT_URI,
                 null,
-                // ContactsContract.Data.RAW_CONTACT_ID + " = ? ",
                 ContactsContract.RawContacts._ID + " = ? ",
                 new String[] { id },
-                // ContactsContract.Data.RAW_CONTACT_ID + " ASC");
                 ContactsContract.RawContacts.Data._ID + " ASC");
 
         HashMap<String, Boolean> populate = buildPopulationSet(
@@ -390,7 +382,6 @@ public class ContactAccessorSdk5 extends ContactAccessor {
 
         // Column indices
         int colContactId = c.getColumnIndex(ContactsContract.Data.CONTACT_ID);
-        // int colRawContactId = c.getColumnIndex(ContactsContract.Data.RAW_CONTACT_ID);
         int colRawContactId = c.getColumnIndex(ContactsContract.RawContacts._ID);
         int colMimetype = c.getColumnIndex(ContactsContract.Data.MIMETYPE);
         int colDisplayName = c.getColumnIndex(ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME);
@@ -434,7 +425,6 @@ public class ContactAccessorSdk5 extends ContactAccessor {
                         // and push the contact into the contacts array
                         contacts.put(populateContact(contact, organizations, addresses, phones,
                                 emails, ims, websites, photos));
-
 
 
                         // Clean up the objects
@@ -687,7 +677,6 @@ public class ContactAccessorSdk5 extends ContactAccessor {
 
             String key;
             try {
-                //Log.d(LOG_TAG, "How many fields do we have = " + fields.length());
                 for (int i = 0; i < fields.length(); i++) {
                     key = fields.getString(i);
 
@@ -1034,23 +1023,12 @@ public class ContactAccessorSdk5 extends ContactAccessor {
 
             byte[] photoBlob = cursor.getBlob(cursor.getColumnIndex(
                     ContactsContract.CommonDataKinds.Photo.PHOTO));
+            if (photoBlob == null) {
+                return null;
+            }
+
             photo.put("value", Base64.encodeToString(photoBlob, Base64.DEFAULT));
 
-            // photo.put("type", "url");
-            // Uri person = ContentUris.withAppendedId(ContactsContract.RawContacts.CONTENT_URI, (Long.valueOf(rawContactId)));
-            // Uri photoUri = Uri.withAppendedPath(person, ContactsContract.RawContacts.DisplayPhoto.CONTENT_DIRECTORY);
-            // photo.put("value", photoUri.toString());
-
-            // // Query photo existance
-            // Cursor photoCursor = mApp.getActivity().getContentResolver().query(photoUri, new String[] {ContactsContract.Contacts.Photo.PHOTO}, null, null, null);
-            // if (photoCursor == null) {
-            //     return null;
-            // } else {
-            //     if (!photoCursor.moveToFirst()) {
-            //         photoCursor.close();
-            //         return null;
-            //     }
-            // }
         } catch (JSONException e) {
             Log.e(LOG_TAG, e.getMessage(), e);
         }
@@ -1150,17 +1128,6 @@ public class ContactAccessorSdk5 extends ContactAccessor {
 
         // Create a list of attributes to add to the contact database
         ArrayList<ContentProviderOperation> ops = new ArrayList<ContentProviderOperation>();
-
-
-        // TODO: really dangerous : move all contact to accountYpe, accountName.
-        // May come from examples in android doc, useless (unless change account
-        // of a app).
-        //
-        //Add contact type
-        // ops.add(ContentProviderOperation.newUpdate(ContactsContract.RawContacts.CONTENT_URI)
-        //         .withValue(ContactsContract.RawContacts.ACCOUNT_TYPE, accountType)
-        //         .withValue(ContactsContract.RawContacts.ACCOUNT_NAME, accountName)
-        //         .build());
 
         // Modify name
         JSONObject name;

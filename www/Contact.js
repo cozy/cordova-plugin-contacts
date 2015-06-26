@@ -29,6 +29,7 @@ var argscheck = require('cordova/argscheck'),
 * Currently only used for Date fields
 */
 function convertIn(contact) {
+    // Wrong on android !
     // var value = contact.birthday;
     // try {
     //   // contact.birthday = new Date(parseFloat(value));
@@ -45,6 +46,7 @@ function convertIn(contact) {
 **/
 
 function convertOut(contact) {
+    // Wrong on android !
     // var value = contact.birthday;
     // if (value !== null) {
     //     // try to make it a Date object if it is not already

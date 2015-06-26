@@ -94,11 +94,17 @@ var contacts = {
         return contact;
     },
 
-    // TODO
+
     createAccount: function(accountType, accountName, successCB, errorCB) {
         argscheck.checkArgs('ssfF', 'contacts.createAccount', arguments);
-        exec(successCB, errorCB, 'Contacts', 'createAccount', [accountName, accountType]);
+        exec(successCB, errorCB, 'Contacts', 'createAccount',
+            [accountName, accountType]);
 
+    },
+
+    listAccounts: function(successCB, errorCB) {
+        argscheck.checkArgs('fF', 'contacts.listAccounts', arguments);
+        exec(successCB, errorCB, "Contacts", "listAccounts", []);
     },
 };
 
