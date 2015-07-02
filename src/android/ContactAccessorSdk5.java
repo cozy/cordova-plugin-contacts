@@ -460,6 +460,11 @@ public class ContactAccessorSdk5 extends ContactAccessor {
                     // Grab the mimetype of the current row as it will be used in a lot of comparisons
                     mimetype = c.getString(colMimetype);
 
+                    // Defensive, mimetype might be null !
+                    if (mimetype == null) {
+                        mimetype = "";
+                    }
+
                     if (mimetype.equals(ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE) && isRequired("name", populate)) {
                         contact.put("displayName", c.getString(colDisplayName));
                     }
