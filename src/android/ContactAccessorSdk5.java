@@ -41,7 +41,6 @@ import android.accounts.Account;
 import android.accounts.AccountManager;
 import android.content.ContentProviderOperation;
 import android.content.ContentProviderResult;
-import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.OperationApplicationException;
 import android.database.Cursor;
@@ -53,6 +52,9 @@ import android.util.Log;
 import android.util.Base64;
 import android.provider.ContactsContract.RawContacts;
 import android.provider.ContactsContract.RawContactsEntity;
+import android.provider.BaseColumns;
+import android.util.SparseArray;
+
 
 
 
@@ -288,19 +290,27 @@ public class ContactAccessorSdk5 extends ContactAccessor {
             columnsToFetch.add(ContactsContract.CommonDataKinds.Website.URL);
             columnsToFetch.add(ContactsContract.CommonDataKinds.Website.TYPE);
         }
-        if (isRequired("birthday", populate)) {
+        if (isRequired("birthday", populate) || isRequired("about", populate)) {
             columnsToFetch.add(ContactsContract.CommonDataKinds.Event.START_DATE);
             columnsToFetch.add(ContactsContract.CommonDataKinds.Event.TYPE);
+            columnsToFetch.add(ContactsContract.CommonDataKinds.Event.LABEL);
         }
         if (isRequired("photos", populate)) {
             columnsToFetch.add(ContactsContract.CommonDataKinds.Photo._ID);
             columnsToFetch.add(ContactsContract.CommonDataKinds.Photo.PHOTO);
         }
 
+        if (isRequired("relations", populate)) {
+            // TODO : fetch it once for all kind of fields will be enought.
+            columnsToFetch.add(BaseColumns._ID);
+            columnsToFetch.add(ContactsContract.CommonDataKinds.Relation.NAME);
+            columnsToFetch.add(ContactsContract.CommonDataKinds.Relation.TYPE);
+            columnsToFetch.add(ContactsContract.CommonDataKinds.Relation.LABEL);
+        }
+
         // Do the id query
         Cursor c = mApp.getActivity().getContentResolver().query(
             RawContactsEntity.CONTENT_URI,
-
                 columnsToFetch.toArray(new String[] {}),
                 idOptions.getWhere(),
                 idOptions.getWhereArgs(),
@@ -379,6 +389,9 @@ public class ContactAccessorSdk5 extends ContactAccessor {
         JSONArray ims = new JSONArray();
         JSONArray websites = new JSONArray();
         JSONArray photos = new JSONArray();
+        JSONArray about = new JSONArray();
+        JSONArray relations = new JSONArray();
+
 
         // Column indices
         int colContactId = c.getColumnIndex(ContactsContract.Data.CONTACT_ID);
@@ -424,7 +437,7 @@ public class ContactAccessorSdk5 extends ContactAccessor {
                         // Populate the Contact object with it's arrays
                         // and push the contact into the contacts array
                         contacts.put(populateContact(contact, organizations, addresses, phones,
-                                emails, ims, websites, photos));
+                                emails, ims, websites, photos, about, relations));
 
 
                         // Clean up the objects
@@ -436,6 +449,8 @@ public class ContactAccessorSdk5 extends ContactAccessor {
                         ims = new JSONArray();
                         websites = new JSONArray();
                         photos = new JSONArray();
+                        about = new JSONArray();
+                        relations = new JSONArray();
 
                         // Set newContact to true as we are starting to populate a new contact
                         newContact = true;
@@ -507,8 +522,14 @@ public class ContactAccessorSdk5 extends ContactAccessor {
                     }
                     else if (mimetype.equals(ContactsContract.CommonDataKinds.Event.CONTENT_ITEM_TYPE)) {
                         if (isRequired("birthday", populate) &&
-                                ContactsContract.CommonDataKinds.Event.TYPE_BIRTHDAY == c.getInt(colEventType)) {
+                            ContactsContract.CommonDataKinds.Event.TYPE_BIRTHDAY == c.getInt(colEventType) &&
+                            !contact.has("birthday")) {
                             contact.put("birthday", c.getString(colBirthday));
+                        } else if (isRequired("about", populate)) {
+                            about.put(contentQuery(c, EVENT_TYPES,
+                            ContactsContract.CommonDataKinds.Event.START_DATE,
+                            ContactsContract.CommonDataKinds.Event.TYPE,
+                            ContactsContract.CommonDataKinds.Event.LABEL));
                         }
                     }
                     else if (mimetype.equals(ContactsContract.CommonDataKinds.Photo.CONTENT_ITEM_TYPE)
@@ -518,6 +539,14 @@ public class ContactAccessorSdk5 extends ContactAccessor {
                             photos.put(photo);
                         }
                     }
+                    else if (mimetype.equals(ContactsContract.CommonDataKinds.Relation.CONTENT_ITEM_TYPE)
+                        && isRequired("relations", populate)) {
+                        relations.put(contentQuery(c, EVENT_TYPES,
+                        ContactsContract.CommonDataKinds.Relation.NAME,
+                        ContactsContract.CommonDataKinds.Relation.TYPE,
+                        ContactsContract.CommonDataKinds.Relation.LABEL));
+                    }
+
                 } catch (JSONException e) {
                     Log.e(LOG_TAG, e.getMessage(), e);
                 }
@@ -530,7 +559,7 @@ public class ContactAccessorSdk5 extends ContactAccessor {
             // Push the last contact into the contacts array
             if (contacts.length() < limit) {
                 contacts.put(populateContact(contact, organizations, addresses, phones,
-                        emails, ims, websites, photos));
+                        emails, ims, websites, photos, relations, about));
             }
         }
         c.close();
@@ -587,7 +616,8 @@ public class ContactAccessorSdk5 extends ContactAccessor {
      */
     private JSONObject populateContact(JSONObject contact, JSONArray organizations,
             JSONArray addresses, JSONArray phones, JSONArray emails,
-            JSONArray ims, JSONArray websites, JSONArray photos) {
+            JSONArray ims, JSONArray websites, JSONArray photos,
+            JSONArray relations, JSONArray about) {
         try {
             // Only return the array if it has at least one entry
             if (organizations.length() > 0) {
@@ -610,6 +640,12 @@ public class ContactAccessorSdk5 extends ContactAccessor {
             }
             if (photos.length() > 0) {
                 contact.put("photos", photos);
+            }
+            if (relations.length() > 0) {
+                contact.put("relations", relations);
+            }
+            if (about.length() > 0) {
+                contact.put("about", about);
             }
         } catch (JSONException e) {
             Log.e(LOG_TAG, e.getMessage(), e);
@@ -780,6 +816,7 @@ public class ContactAccessorSdk5 extends ContactAccessor {
                         where.add("(" + ContactsContract.RawContacts.SYNC4 + " LIKE ? )");
                         whereArgs.add(searchTerm);
                     }
+                    //TODO : handle about fields, and relations fields.
                 }
             } catch (JSONException e) {
                 Log.e(LOG_TAG, e.getMessage(), e);
@@ -971,6 +1008,36 @@ public class ContactAccessorSdk5 extends ContactAccessor {
             Log.e(LOG_TAG, e.getMessage(), e);
         }
         return email;
+    }
+
+    /**
+     * Create a ContactField JSONObject
+     * @param cursor the current database row
+     * @return a JSONObject representing a ContactField
+     */
+    private JSONObject contentQuery(Cursor cursor,
+        SparseArray<String> typesMap,
+        String valueFieldName, String typeFieldName, String labelFieldName
+        ) {
+        JSONObject item = new JSONObject();
+        try {
+            item.put("id", cursor.getString(cursor.getColumnIndex(BaseColumns._ID)));
+            item.put("pref", false); // Android does not store pref attribute
+            item.put("value", cursor.getString(
+                cursor.getColumnIndex(valueFieldName)));
+
+            String type = getType(typesMap, cursor.getInt(
+                cursor.getColumnIndex(typeFieldName)));
+
+            if ("custom".equals(type)) {
+                type = cursor.getString(cursor.getColumnIndex(labelFieldName));
+            }
+            item.put("type", type);
+
+        } catch (JSONException e) {
+            Log.e(LOG_TAG, e.getMessage(), e);
+        }
+        return item;
     }
 
     /**
@@ -1550,6 +1617,38 @@ public class ContactAccessorSdk5 extends ContactAccessor {
             Log.d(LOG_TAG, "Could not get photos");
         }
 
+        // Modify relations:
+
+        JSONArray relations = null;
+        try {
+            relations = contact.getJSONArray("relations");
+            modifyContent(ops, contentUri, rawId, resetFields,
+            relations,
+            ContactsContract.CommonDataKinds.Relation.CONTENT_ITEM_TYPE,
+            RELATION_TYPES,
+            ContactsContract.CommonDataKinds.Relation.NAME,
+            ContactsContract.CommonDataKinds.Relation.TYPE,
+            ContactsContract.CommonDataKinds.Relation.LABEL);
+        } catch (JSONException e) {
+            Log.d(LOG_TAG, "Could not get relations");
+        }
+
+        // Modify events:
+        JSONArray events = null;
+        try {
+            events = contact.getJSONArray("about");
+            modifyContent(ops, contentUri, rawId, resetFields,
+            events,
+            ContactsContract.CommonDataKinds.Event.CONTENT_ITEM_TYPE,
+            EVENT_TYPES,
+            ContactsContract.CommonDataKinds.Event.START_DATE,
+            ContactsContract.CommonDataKinds.Event.TYPE,
+            ContactsContract.CommonDataKinds.Event.LABEL);
+        } catch (JSONException e) {
+            Log.d(LOG_TAG, "Could not get about");
+        }
+
+
         // ModifySync :
         //Add contact type
         contentUri = ContactsContract.RawContacts.CONTENT_URI;
@@ -1619,6 +1718,101 @@ public class ContactAccessorSdk5 extends ContactAccessor {
             return null;
         }
     }
+
+
+    private void modifyContent(ArrayList<ContentProviderOperation> ops, Uri contentUri, int rawId, boolean resetFields,
+        JSONArray items, String contentItemType, SparseArray<String> typesMap,
+        String valueFieldName, String typeFieldName, String labelFieldName) throws JSONException {
+
+        if (items != null) {
+            // Delete all the
+            if (items.length() == 0 || resetFields) {
+                Log.d(LOG_TAG, "This means we should be deleting all the items.");
+                ops.add(ContentProviderOperation.newDelete(contentUri)
+                        .withSelection(ContactsContract.Data.RAW_CONTACT_ID + "=? AND " +
+                                ContactsContract.Data.MIMETYPE + "=?",
+                                new String[] { "" + rawId, contentItemType })
+                        .build());
+            }
+            // Modify or add a items
+            for (int i = 0; i < items.length(); i++) {
+                JSONObject item = (JSONObject) items.get(i);
+
+                String itemId = getJsonString(item, "id");
+                ContentValues contentValues = buildContentValues(item, typesMap,
+                    valueFieldName, typeFieldName, labelFieldName);
+
+
+                // This is a new item so do a DB insert
+                if (itemId == null || resetFields) {
+                    contentValues.put(ContactsContract.Data.RAW_CONTACT_ID, rawId);
+                    contentValues.put(ContactsContract.Data.MIMETYPE, contentItemType);
+
+                    ops.add(ContentProviderOperation.newInsert(
+                           contentUri).withValues(contentValues).build());
+                }
+                // This is an existing item so do a DB update
+                else {
+                    ops.add(ContentProviderOperation.newUpdate(contentUri)
+                            .withSelection(BaseColumns._ID + "=? AND " +
+                                    ContactsContract.Data.MIMETYPE + "=?",
+                                    new String[] { itemId, contentItemType })
+                            .withValues(contentValues)
+                                .build());
+                }
+            }
+        }
+    }
+
+    private ContentValues buildContentValues(JSONObject item,
+        SparseArray<String> typesMap, String valueFieldName,
+        String typeFieldName, String labelFieldName) {
+
+        ContentValues contentValues = new ContentValues();
+        contentValues.put(valueFieldName, getJsonString(item, "value"));
+
+        String rawType = getJsonString(item, "type");
+        int type = getType(typesMap, getJsonString(item, "type"));
+        contentValues.put(typeFieldName, type);
+        if (type == ContactsContract.CommonDataKinds.BaseTypes.TYPE_CUSTOM) {
+            contentValues.put(labelFieldName, rawType);
+        }
+
+        return contentValues;
+    }
+
+    /**
+     * Add content to a list of database actions to be performed
+     *
+     * @param ops the list of database actions
+     * @param im the item to be inserted
+     * @throws JSONException
+     */
+    private void insertContent(ArrayList<ContentProviderOperation> ops, Uri contentUri,
+        JSONArray items, String contentItemType, SparseArray<String> typesMap,
+        String nameFieldName, String typeFieldName, String labelFieldName) throws JSONException {
+
+        if (items != null) {
+            for (int i = 0; i < items.length(); i++) {
+                JSONObject item = (JSONObject) items.get(i);
+
+                ContentValues contentValues = buildContentValues(item, typesMap,
+                            nameFieldName, typeFieldName, labelFieldName);
+
+                // ArrayList<ContentProviderOperation> ops, JSONObject im, Uri contentUri) {
+                ContentProviderOperation.Builder builder = ContentProviderOperation.newInsert(contentUri);
+                builder.withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0);
+                builder.withValue(ContactsContract.Data.MIMETYPE, contentItemType);
+
+                builder.withValues(contentValues);
+
+                ops.add(builder.build());
+            }
+        }
+
+    }
+
+
 
     /**
      * Add a website to a list of database actions to be performed
@@ -2030,6 +2224,36 @@ public class ContactAccessorSdk5 extends ContactAccessor {
         } catch (JSONException e) {
             Log.d(LOG_TAG, "Could not get photos");
         }
+
+
+        // Add relations:
+        JSONArray relations = null;
+        try {
+            relations = contact.getJSONArray("relations");
+            insertContent(ops, contentUri, relations,
+                ContactsContract.CommonDataKinds.Relation.CONTENT_ITEM_TYPE,
+                RELATION_TYPES,
+                ContactsContract.CommonDataKinds.Relation.NAME,
+                ContactsContract.CommonDataKinds.Relation.TYPE,
+                ContactsContract.CommonDataKinds.Relation.LABEL);
+        } catch (JSONException e) {
+            Log.d(LOG_TAG, "Could not get relations");
+        }
+
+        // Add events:
+        JSONArray events = null;
+        try {
+            events = contact.getJSONArray("about");
+            insertContent(ops, contentUri, events,
+                ContactsContract.CommonDataKinds.Event.CONTENT_ITEM_TYPE,
+                EVENT_TYPES,
+                ContactsContract.CommonDataKinds.Event.START_DATE,
+                ContactsContract.CommonDataKinds.Event.TYPE,
+                ContactsContract.CommonDataKinds.Event.LABEL);
+        } catch (JSONException e) {
+            Log.d(LOG_TAG, "Could not get about");
+        }
+
 
         String newId = null;
         //Add contact
@@ -2457,6 +2681,59 @@ public class ContactAccessorSdk5 extends ContactAccessor {
             break;
         }
         return stringType;
+    }
+
+
+    public static SparseArray<String> RELATION_TYPES = new SparseArray<String>();
+    static {
+        RELATION_TYPES.append(ContactsContract.CommonDataKinds.Relation.TYPE_CUSTOM, "custom");
+        RELATION_TYPES.append(ContactsContract.CommonDataKinds.Relation.TYPE_ASSISTANT, "assistant");
+        RELATION_TYPES.append(ContactsContract.CommonDataKinds.Relation.TYPE_BROTHER, "brother");
+        RELATION_TYPES.append(ContactsContract.CommonDataKinds.Relation.TYPE_CHILD, "child");
+        RELATION_TYPES.append(ContactsContract.CommonDataKinds.Relation.TYPE_DOMESTIC_PARTNER, "domestic_partner");
+        RELATION_TYPES.append(ContactsContract.CommonDataKinds.Relation.TYPE_FATHER, "father");
+        RELATION_TYPES.append(ContactsContract.CommonDataKinds.Relation.TYPE_FRIEND, "friend");
+        RELATION_TYPES.append(ContactsContract.CommonDataKinds.Relation.TYPE_MANAGER, "manager");
+        RELATION_TYPES.append(ContactsContract.CommonDataKinds.Relation.TYPE_MOTHER, "mother");
+        RELATION_TYPES.append(ContactsContract.CommonDataKinds.Relation.TYPE_PARENT, "parent");
+        RELATION_TYPES.append(ContactsContract.CommonDataKinds.Relation.TYPE_PARTNER, "partner");
+        RELATION_TYPES.append(ContactsContract.CommonDataKinds.Relation.TYPE_REFERRED_BY, "referred_by");
+        RELATION_TYPES.append(ContactsContract.CommonDataKinds.Relation.TYPE_RELATIVE, "relative");
+        RELATION_TYPES.append(ContactsContract.CommonDataKinds.Relation.TYPE_SISTER, "sister");
+        RELATION_TYPES.append(ContactsContract.CommonDataKinds.Relation.TYPE_SPOUSE, "spouse");
+    }
+
+    /**
+     * Converts a string to it's Android int value.
+     * @param string
+     * @return Android int value
+     */
+    private int getType(SparseArray<String> typesMap, String string) {
+        int index = typesMap.indexOfValue(string);
+        if (index < 0) {
+            return 0; // == TYPE_CUSTOM
+        }
+
+        return typesMap.keyAt(index);
+    }
+
+    /**
+     * Converts an Android phone type into a string
+     * @param type
+     * @return relationtype as string.
+     */
+    private String getType(SparseArray<String> typesMap, int type) {
+        return typesMap.get(type);
+    }
+
+
+    public static SparseArray<String> EVENT_TYPES = new SparseArray<String>();
+
+    static {
+        EVENT_TYPES.append(ContactsContract.CommonDataKinds.Event.TYPE_CUSTOM, "custom");
+        EVENT_TYPES.append(ContactsContract.CommonDataKinds.Event.TYPE_ANNIVERSARY, "anniversary");
+        EVENT_TYPES.append(ContactsContract.CommonDataKinds.Event.TYPE_OTHER, "other");
+        EVENT_TYPES.append(ContactsContract.CommonDataKinds.Event.TYPE_BIRTHDAY, "birthday");
     }
 
 }

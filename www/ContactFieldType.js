@@ -50,7 +50,8 @@
         streetAddress:  "streetAddress",
         title:          "title",
         urls:           "urls",
-
+        about:          "about",
+        relations:      "relations",
         // ims commons values
 
         dirty:          "dirty",

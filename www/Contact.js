@@ -86,7 +86,7 @@ function convertOut(contact) {
 * @param {Array.<ContactField>} urls contact's web sites
 */
 var Contact = function (id, displayName, name, nickname, phoneNumbers, emails, addresses,
-    ims, organizations, birthday, note, photos, categories, urls) {
+    ims, organizations, birthday, note, photos, categories, urls, about, relations) {
     this.id = id || null;
     this.rawId = null;
     this.version = null;
@@ -103,6 +103,8 @@ var Contact = function (id, displayName, name, nickname, phoneNumbers, emails, a
     this.photos = photos || null; // ContactField[]
     this.categories = categories || null; // ContactField[]
     this.urls = urls || null; // ContactField[]
+    this.about = about || null; // ContactField[]
+    this.relations = relations || null; // ContactField[]
     this.sourceId = null;
     this.dirty = null;
     this.deleted = null;

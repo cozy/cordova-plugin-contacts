@@ -76,6 +76,9 @@ public abstract class ContactAccessor {
                 map.put("urls", true);
                 map.put("photos", true);
                 map.put("categories", true);
+                map.put("about", true);
+                map.put("relations", true);
+
             } else {
                 for (int i = 0; i < desiredFields.length(); i++) {
                     key = desiredFields.getString(i);
@@ -106,6 +109,10 @@ public abstract class ContactAccessor {
                         map.put("photos", true);
                     } else if (key.startsWith("categories")) {
                         map.put("categories", true);
+                    } else if (key.startsWith("about")) {
+                        map.put("about", true);
+                    } else if (key.startsWith("relations")) {
+                        map.put("relations", true);
                     }
                 }
             }
