@@ -16,9 +16,11 @@ import android.util.Log;
  * of its methods
  */
 public class StubAuthenticator extends AbstractAccountAuthenticator {
+    Context mContext;
     // Simple constructor
     public StubAuthenticator(Context context) {
         super(context);
+        mContext = context;
     }
     // Editing properties is not supported
     @Override
@@ -34,7 +36,20 @@ public class StubAuthenticator extends AbstractAccountAuthenticator {
             String s2,
             String[] strings,
             Bundle bundle) throws NetworkErrorException {
-        return null;
+        // Redirect to main activity
+
+
+        //TODO : Z hard dependance on cozy-mobile !
+        Intent intent = new Intent(mContext, io.cozy.files_client.MainActivity.class);
+        // But generic way would need CATEGORY_DEFAULT in manifest to work.
+        // Intent intent = new Intent();
+        // intent.setAction(Intent.ACTION_MAIN);
+        // intent.addCategory(Intent.CATEGORY_LAUNCHER);
+        // intent.setPackage(mContext.getPackageName());
+
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        bundle.putParcelable(AccountManager.KEY_INTENT, intent);
+        return bundle;
     }
     // Ignore attempts to confirm credentials
     @Override
