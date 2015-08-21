@@ -1001,12 +1001,12 @@ public class ContactAccessorSdk5 extends ContactAccessor {
         JSONObject name;
         try {
             String displayName = getJsonString(contact, "displayName");
-            name = contact.getJSONObject("name");
 
             if (displayName != null) {
                 nameValues.put(StructuredName.DISPLAY_NAME, displayName);
             }
 
+            name = contact.getJSONObject("name");
             String familyName = getJsonString(name, "familyName");
             if (familyName != null) {
                 nameValues.put(StructuredName.FAMILY_NAME, familyName);
@@ -1031,22 +1031,24 @@ public class ContactAccessorSdk5 extends ContactAccessor {
             Log.d(LOG_TAG, "Could not get name");
         }
 
-        builder = null;
-        if (rawId == -1) {
-            builder = ContentProviderOperation.newInsert(contentUri);
-            builder.withValueBackReference(
-                ContactsContract.Data.RAW_CONTACT_ID, 0);
-            builder.withValue(
-                ContactsContract.Data.MIMETYPE, StructuredName.CONTENT_ITEM_TYPE);
-        } else {
-            builder = ContentProviderOperation.newUpdate(contentUri)
-                .withSelection(ContactsContract.Data.RAW_CONTACT_ID + "=? AND " +
-                    ContactsContract.Data.MIMETYPE + "=?",
-                    new String[] { "" + rawId, StructuredName.CONTENT_ITEM_TYPE });
-        }
+        if (nameValues.size() > 0) {
+            builder = null;
+            if (rawId == -1) {
+                builder = ContentProviderOperation.newInsert(contentUri);
+                builder.withValueBackReference(
+                    ContactsContract.Data.RAW_CONTACT_ID, 0);
+                builder.withValue(
+                    ContactsContract.Data.MIMETYPE, StructuredName.CONTENT_ITEM_TYPE);
+            } else {
+                builder = ContentProviderOperation.newUpdate(contentUri)
+                    .withSelection(ContactsContract.Data.RAW_CONTACT_ID + "=? AND " +
+                        ContactsContract.Data.MIMETYPE + "=?",
+                        new String[] { "" + rawId, StructuredName.CONTENT_ITEM_TYPE });
+            }
 
-        builder.withValues(nameValues);
-        ops.add(builder.build());
+            builder.withValues(nameValues);
+            ops.add(builder.build());
+        }
 
 
 
