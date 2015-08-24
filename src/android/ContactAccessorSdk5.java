@@ -1067,6 +1067,29 @@ public class ContactAccessorSdk5 extends ContactAccessor {
             Log.d(LOG_TAG, "JSONError while parsing.");
         }
 
+        try {
+            // Birthday
+            String birthday = getJsonString(contact, "birthday");
+            if (birthday != null) {
+                JSONObject birthdayItem = new JSONObject();
+                birthdayItem.put("type", "birthday");
+                birthdayItem.put("value", birthday);
+                JSONArray abouts = new JSONArray();
+                abouts.put(birthdayItem);
+
+                if (contact.has("about")) {
+                    JSONArray baseAbouts = contact.getJSONArray("about");
+
+                    for (int i=0; i < baseAbouts.length(); i++) {
+                        abouts.put(baseAbouts.get(i));
+                    }
+                }
+                contact.put("about", abouts);
+            }
+        } catch (JSONException e) {
+            Log.d(LOG_TAG, "JSONError while putting birthday as about.");
+        }
+
         for (String key : new String[] {
             "photos", "phoneNumbers", "emails", "addresses", "organizations",
             "ims", "urls", "relations", "about"
