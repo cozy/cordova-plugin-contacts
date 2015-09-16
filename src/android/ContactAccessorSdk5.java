@@ -1064,12 +1064,13 @@ public class ContactAccessorSdk5 extends ContactAccessor {
                 nickname, Nickname.CONTENT_ITEM_TYPE, Nickname.NAME);
 
         } catch (JSONException e) {
-            Log.d(LOG_TAG, "JSONError while parsing.");
+            Log.d(LOG_TAG, "JSONError while parsing.", e);
         }
 
         try {
             // Birthday
             String birthday = getJsonString(contact, "birthday");
+            Log.d(LOG_TAG, "birthday: " + birthday != null ? birthday : "null");
             if (birthday != null) {
                 JSONObject birthdayItem = new JSONObject();
                 birthdayItem.put("type", "birthday");
@@ -1077,9 +1078,8 @@ public class ContactAccessorSdk5 extends ContactAccessor {
                 JSONArray abouts = new JSONArray();
                 abouts.put(birthdayItem);
 
-                if (contact.has("about")) {
-                    JSONArray baseAbouts = contact.getJSONArray("about");
-
+                JSONArray baseAbouts = contact.optJSONArray("about");
+                if (baseAbouts != null) {
                     for (int i=0; i < baseAbouts.length(); i++) {
                         abouts.put(baseAbouts.get(i));
                     }
@@ -1087,7 +1087,7 @@ public class ContactAccessorSdk5 extends ContactAccessor {
                 contact.put("about", abouts);
             }
         } catch (JSONException e) {
-            Log.d(LOG_TAG, "JSONError while putting birthday as about.");
+            Log.d(LOG_TAG, "JSONError while putting birthday as about.", e);
         }
 
         for (String key : new String[] {
@@ -1306,10 +1306,16 @@ public class ContactAccessorSdk5 extends ContactAccessor {
                 builder.withValue(
                     ContactsContract.Data.MIMETYPE, contentItemType);
             } else {
-                builder = ContentProviderOperation.newUpdate(contentUri)
+                // Delete then insert as we can't know here if field exists already
+                ops.add(ContentProviderOperation.newDelete(contentUri)
                     .withSelection(ContactsContract.Data.RAW_CONTACT_ID + "=? AND " +
                         ContactsContract.Data.MIMETYPE + "=?",
-                        new String[] { "" + rawId, contentItemType });
+                                new String[] { "" + rawId, contentItemType })
+                        .build());
+
+                builder = ContentProviderOperation.newInsert(contentUri);
+                builder.withValue(ContactsContract.Data.RAW_CONTACT_ID, rawId);
+                builder.withValue(ContactsContract.Data.MIMETYPE, contentItemType);
             }
 
             builder.withValue(fieldName, value);
