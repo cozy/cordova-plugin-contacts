@@ -1070,7 +1070,6 @@ public class ContactAccessorSdk5 extends ContactAccessor {
         try {
             // Birthday
             String birthday = getJsonString(contact, "birthday");
-            Log.d(LOG_TAG, "birthday: " + birthday != null ? birthday : "null");
             if (birthday != null) {
                 JSONObject birthdayItem = new JSONObject();
                 birthdayItem.put("type", "birthday");
