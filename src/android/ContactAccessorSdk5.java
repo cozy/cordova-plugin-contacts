@@ -1095,7 +1095,7 @@ public class ContactAccessorSdk5 extends ContactAccessor {
             }) {
             JSONArray items = null;
             try {
-                items = contact.getJSONArray(key);
+                items = contact.optJSONArray(key);
                 addContactFieldOps(ops, contentUri, rawId, resetFields,
                     items,
                     CONTENT_ITEM_TYPES_MAP.get(key),
@@ -1325,16 +1325,17 @@ public class ContactAccessorSdk5 extends ContactAccessor {
     private void addContactFieldOps(ArrayList<ContentProviderOperation> ops, Uri contentUri, int rawId, boolean resetFields,
         JSONArray items, String contentItemType, SparseArray<String> typesMap, String[] fieldNames) throws JSONException {
 
+        // Delete all the old values :
+        // if: it's an old contact, items are emptied or resetField is true.
+        if (rawId != -1 && ((items != null && items.length() == 0) || resetFields)) {
+            Log.d(LOG_TAG, "This means we should be deleting all the items.");
+            ops.add(ContentProviderOperation.newDelete(contentUri)
+                    .withSelection(ContactsContract.Data.RAW_CONTACT_ID + "=? AND " +
+                            ContactsContract.Data.MIMETYPE + "=?",
+                            new String[] { "" + rawId, contentItemType })
+                    .build());
+        }
         if (items != null) {
-            // Delete all the
-            if (rawId != -1 && (items.length() == 0 || resetFields)) {
-                Log.d(LOG_TAG, "This means we should be deleting all the items.");
-                ops.add(ContentProviderOperation.newDelete(contentUri)
-                        .withSelection(ContactsContract.Data.RAW_CONTACT_ID + "=? AND " +
-                                ContactsContract.Data.MIMETYPE + "=?",
-                                new String[] { "" + rawId, contentItemType })
-                        .build());
-            }
             // Modify or add a items
             for (int i = 0; i < items.length(); i++) {
                 JSONObject item = (JSONObject) items.get(i);
